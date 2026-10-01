@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items.js'
+import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/Items.js'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({ modelValue: Boolean, item: Object })

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { STATUSES } from '@/stores/items.js'
+import { STATUSES } from '@/stores/Items.js'
 
 const props = defineProps({ status: String })
 
