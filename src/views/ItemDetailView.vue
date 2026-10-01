@@ -1,13 +1,13 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { formatDate, formatMoney, timeAgo } from '@/utils/format'
-import { useSettingsStore } from '@/stores/settings'
+import { useSettingsStore } from '@/stores/settings.js'
 const settings = useSettingsStore()
 
 

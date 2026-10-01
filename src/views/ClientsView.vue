@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useClientsStore } from '@/stores/clients'
+import { useClientsStore } from '@/stores/clients.js'
 import ClientFormModal from '@/components/ClientFormModal.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'

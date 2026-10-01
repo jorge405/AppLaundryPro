@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import InlineEdit from './InlineEdit.vue'
 import QuickStatusSelect from './QuickStatusSelect.vue'
-import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items'
-import { useSettingsStore } from '@/stores/settings'
+import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items.js'
+import { useSettingsStore } from '@/stores/settings.js'
 import { timeAgo } from '@/utils/format'
 
 const props = defineProps({ item: Object })

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { MACHINE_TYPES, MACHINE_STATUSES, useMachinesStore } from '@/stores/machines'
+import { MACHINE_TYPES, MACHINE_STATUSES, useMachinesStore } from '@/stores/machines.js'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({ modelValue: Boolean, item: Object })

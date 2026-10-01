@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import ItemViewModal from '@/components/ItemViewModal.vue'

@@ -1,10 +1,10 @@
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useItemsStore } from '@/stores/items'
-import { useMaterialsStore } from '@/stores/materials'
-import { useMachinesStore } from '@/stores/machines'
-import { useClientsStore } from '@/stores/clients'
+import { useAuthStore } from '@/stores/auth.js'
+import { useItemsStore } from '@/stores/items.js'
+import { useMaterialsStore } from '@/stores/materials.js'
+import { useMachinesStore } from '@/stores/machines.js'
+import { useClientsStore } from '@/stores/clients.js'
 
 
 const materials = useMaterialsStore()

@@ -1,7 +1,7 @@
 <script setup>
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
-import { useSettingsStore } from '@/stores/settings'
+import { useSettingsStore } from '@/stores/settings.js'
 
 defineEmits(['toggle-sidebar'])
 const route = useRoute()

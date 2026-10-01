@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { useClientsStore } from '@/stores/clients'
+import { useClientsStore } from '@/stores/clients.js'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({ modelValue: Boolean, item: Object })

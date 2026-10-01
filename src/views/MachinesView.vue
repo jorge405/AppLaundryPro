@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useMachinesStore, MACHINE_TYPES, MACHINE_STATUSES } from '@/stores/machines'
+import { useMachinesStore, MACHINE_TYPES, MACHINE_STATUSES } from '@/stores/machines.js'
 import MachineFormModal from '@/components/MachineFormModal.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'

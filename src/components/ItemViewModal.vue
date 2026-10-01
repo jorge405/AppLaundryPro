@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { CATEGORIES, STATUSES } from '@/stores/items'
-import { useSettingsStore } from '@/stores/settings'
+import { CATEGORIES, STATUSES } from '@/stores/items.js'
+import { useSettingsStore } from '@/stores/settings.js'
 import StatusBadge from './StatusBadge.vue'
 import { formatDate, timeAgo } from '@/utils/format'
 

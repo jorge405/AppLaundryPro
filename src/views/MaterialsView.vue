@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useMaterialsStore, MATERIAL_CATEGORIES } from '@/stores/materials'
+import { useMaterialsStore, MATERIAL_CATEGORIES } from '@/stores/materials.js'
 import MaterialFormModal from '@/components/MaterialFormModal.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'
