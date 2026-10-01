@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
 import StatCard from '@/components/StatCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { timeAgo, formatMoney } from '@/utils/format'
-import { useSettingsStore } from '@/stores/settings'
+import { useSettingsStore } from '@/stores/settings.js'
 const settings = useSettingsStore()
 
 
