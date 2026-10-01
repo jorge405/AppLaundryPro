@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import { useToast } from '@/composables/useToast'
@@ -56,7 +56,7 @@ function advance() {
       <div class="lg:col-span-2 space-y-5">
         <div class="card p-6">
           <div class="flex items-start gap-4">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-50 to-violet-50 grid place-items-center text-3xl shrink-0">
+            <div class="w-16 h-16 rounded-2xl bg-linear-to-tr from-indigo-50 to-violet-50 grid place-items-center text-3xl shrink-0">
               {{ cat?.icon }}
             </div>
             <div class="flex-1 min-w-0">
@@ -100,7 +100,7 @@ function advance() {
           <h2 class="font-semibold text-slate-900 mb-4">Trazabilidad</h2>
           <ol class="relative border-l-2 border-slate-100 ml-2 space-y-4">
             <li v-for="(h, i) in history" :key="i" class="ml-6 relative">
-              <span class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-white border-2 border-indigo-500"></span>
+              <span class="absolute -left-7.75 top-1 w-4 h-4 rounded-full bg-white border-2 border-indigo-500"></span>
               <p class="text-sm font-medium text-slate-800">
                 {{ STATUSES.find(s => s.id === h.status)?.label || h.status }}
               </p>

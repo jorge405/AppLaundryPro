@@ -111,11 +111,11 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
         </svg>
         <input v-model="search" placeholder="Buscar material..." class="input pl-10" />
       </div>
-      <select v-model="filterCategory" class="input w-auto min-w-[160px]">
+      <select v-model="filterCategory" class="input w-auto min-w-40">
         <option value="all">Todas categorías</option>
         <option v-for="c in MATERIAL_CATEGORIES" :key="c.id" :value="c.id">{{ c.icon }} {{ c.label }}</option>
       </select>
-      <select v-model="filterStock" class="input w-auto min-w-[140px]">
+      <select v-model="filterStock" class="input w-auto min-w-35">
         <option value="all">Todo stock</option>
         <option value="low">Stock bajo</option>
         <option value="ok">Stock OK</option>
@@ -222,7 +222,7 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
 </div>
 
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-sky-100 to-cyan-100 grid place-items-center text-2xl mb-4">🧴</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-sky-100 to-cyan-100 grid place-items-center text-2xl mb-4">🧴</div>
       <h3 class="font-semibold text-slate-900">{{ store.stats.total ? 'Sin resultados' : 'Sin materiales registrados' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Añade detergentes, suavizantes y productos de limpieza.' }}

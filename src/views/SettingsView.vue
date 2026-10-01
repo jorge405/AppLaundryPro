@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useItemsStore } from '@/stores/items.js'
+import { useItemsStore } from '@/stores/Items.js'
 import { useMaterialsStore } from '@/stores/materials.js'
 import { useMachinesStore } from '@/stores/machines.js'
 import { useClientsStore } from '@/stores/clients.js'
@@ -105,7 +105,7 @@ async function factoryReset() {
       <p class="text-sm text-slate-500 mb-5">Información visible en el panel.</p>
 
       <div class="flex items-center gap-4 mb-5">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 grid place-items-center text-white text-2xl font-bold">
+        <div class="w-16 h-16 rounded-2xl bg-linear-to-tr from-indigo-500 to-violet-500 grid place-items-center text-white text-2xl font-bold">
           {{ (name || 'U')[0].toUpperCase() }}
         </div>
         <div>

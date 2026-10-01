@@ -25,7 +25,7 @@ const colorMap = {
         <p class="mt-2 text-2xl font-bold text-slate-900">{{ value }}</p>
         <p v-if="trend" class="mt-1 text-xs text-slate-500">{{ trend }}</p>
       </div>
-      <div :class="['w-11 h-11 rounded-xl grid place-items-center bg-gradient-to-tr text-white shadow-lg', colorMap[color]]">
+      <div :class="['w-11 h-11 rounded-xl grid place-items-center bg-linear-to-tr text-white shadow-lg', colorMap[color]]">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" :d="icon" />
         </svg>

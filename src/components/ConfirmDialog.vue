@@ -7,7 +7,7 @@ const { state, close } = useConfirm()
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="state.open" class="fixed inset-0 z-[90] grid place-items-center p-4">
+      <div v-if="state.open" class="fixed inset-0 z-90 grid place-items-center p-4">
         <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="close(false)" />
         <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
           <h3 class="text-lg font-semibold text-slate-900">{{ state.title }}</h3>

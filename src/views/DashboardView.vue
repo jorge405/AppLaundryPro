@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
 import StatCard from '@/components/StatCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { timeAgo, formatMoney } from '@/utils/format'
@@ -81,7 +81,7 @@ const categoryRows = computed(() =>
               <span class="font-medium text-slate-900">{{ c.count }}</span>
             </div>
             <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
+              <div class="h-full bg-linear-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
                 :style="{ width: c.pct + '%' }" />
             </div>
           </li>

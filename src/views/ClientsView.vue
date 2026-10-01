@@ -85,7 +85,7 @@ function initials(name) {
         </svg>
         <input v-model="search" placeholder="Buscar cliente..." class="input pl-10" />
       </div>
-      <select v-model="filterTier" class="input w-auto min-w-[150px]">
+      <select v-model="filterTier" class="input w-auto min-w-37.5">
         <option value="all">Todos los tipos</option>
         <option value="nuevo">Nuevos</option>
         <option value="recurrente">Recurrentes</option>
@@ -100,7 +100,7 @@ function initials(name) {
     <div v-if="filtered.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <div v-for="c in filtered" :key="c.id" class="card p-5 flex flex-col gap-3 hover:shadow-md transition">
         <div class="flex items-start gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 grid place-items-center text-white font-semibold text-sm shrink-0 shadow-lg shadow-indigo-500/25">
+          <div class="w-12 h-12 rounded-2xl bg-linear-to-tr from-indigo-500 to-violet-500 grid place-items-center text-white font-semibold text-sm shrink-0 shadow-lg shadow-indigo-500/25">
             {{ initials(c.name) }}
           </div>
           <div class="flex-1 min-w-0">
@@ -147,7 +147,7 @@ function initials(name) {
     </div>
 
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">👥</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">👥</div>
       <h3 class="font-semibold text-slate-900">{{ store.stats.total ? 'Sin resultados' : 'Sin clientes registrados' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Añade clientes para llevar un control de pedidos.' }}

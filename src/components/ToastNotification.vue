@@ -17,7 +17,7 @@ const icons = {
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-5 right-5 z-[80] flex flex-col gap-2 items-end">
+    <div class="fixed bottom-5 right-5 z-80 flex flex-col gap-2 items-end">
       <TransitionGroup name="toast">
         <div
           v-for="t in toasts"

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items.js'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import ItemViewModal from '@/components/ItemViewModal.vue'
@@ -102,15 +102,15 @@ function clearFilters() {
         <input v-model="search" placeholder="Buscar por nombre, código o nota..." class="input pl-10" />
       </div>
       <div class="flex flex-wrap gap-2">
-        <select v-model="filterCategory" class="input w-auto min-w-[140px]">
+        <select v-model="filterCategory" class="input w-auto min-w-35">
           <option value="all">Todas categorías</option>
           <option v-for="c in CATEGORIES" :key="c.id" :value="c.id">{{ c.icon }} {{ c.label }}</option>
         </select>
-        <select v-model="filterStatus" class="input w-auto min-w-[140px]">
+        <select v-model="filterStatus" class="input w-auto min-w-35">
           <option value="all">Todos estados</option>
           <option v-for="s in STATUSES" :key="s.id" :value="s.id">{{ s.label }}</option>
         </select>
-        <select v-model="sortBy" class="input w-auto min-w-[130px]">
+        <select v-model="sortBy" class="input w-auto min-w-32.5">
           <option value="recent">Recientes</option>
           <option value="name">Nombre</option>
           <option value="price">Precio</option>
@@ -147,7 +147,7 @@ function clearFilters() {
 
     <!-- Vacío -->
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🧺</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🧺</div>
       <h3 class="font-semibold text-slate-900">{{ items.stats.total ? 'Sin resultados' : 'Empieza tu primera prenda' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ items.stats.total ? 'Prueba con otros filtros de búsqueda.' : 'Registra trajes, camas y ropa para comenzar a gestionar.' }}

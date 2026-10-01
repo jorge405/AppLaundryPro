@@ -102,11 +102,11 @@ const statusStyles = {
         </svg>
         <input v-model="search" placeholder="Buscar máquina..." class="input pl-10" />
       </div>
-      <select v-model="filterType" class="input w-auto min-w-[160px]">
+      <select v-model="filterType" class="input w-auto min-w-40">
         <option value="all">Todos los tipos</option>
         <option v-for="t in MACHINE_TYPES" :key="t.id" :value="t.id">{{ t.icon }} {{ t.label }}</option>
       </select>
-      <select v-model="filterStatus" class="input w-auto min-w-[160px]">
+      <select v-model="filterStatus" class="input w-auto min-w-40">
         <option value="all">Todos los estados</option>
         <option v-for="s in MACHINE_STATUSES" :key="s.id" :value="s.id">{{ s.label }}</option>
       </select>
@@ -185,7 +185,7 @@ const statusStyles = {
 </div>
 
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">⚙️</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">⚙️</div>
       <h3 class="font-semibold text-slate-900">{{ store.stats.total ? 'Sin resultados' : 'Sin máquinas registradas' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Registra lavadoras, secadoras, planchas...' }}

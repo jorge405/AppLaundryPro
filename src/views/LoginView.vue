@@ -44,11 +44,11 @@ function loginDemo() {
 
 <template>
   <div class="relative min-h-screen overflow-hidden flex items-center justify-center px-4 py-10
-              bg-gradient-to-br from-slate-900 via-sky-800 to-cyan-400">
+              bg-linear-to-br from-slate-900 via-sky-800 to-cyan-400">
 
     <!-- Blobs decorativos celestes -->
-    <div class="absolute -top-40 -left-40 w-[500px] h-[500px] bg-cyan-300/30 rounded-full blur-3xl"></div>
-    <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-sky-500/30 rounded-full blur-3xl"></div>
+    <div class="absolute -top-40 -left-40 w-125 h-125 bg-cyan-300/30 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -right-40 w-125 h-125 bg-sky-500/30 rounded-full blur-3xl"></div>
     <div class="absolute top-1/3 left-1/2 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl"></div>
 
     <!-- Grid pattern sutil -->
@@ -125,7 +125,7 @@ function loginDemo() {
           <button
             type="submit"
             class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white
-                   bg-gradient-to-r from-sky-600 to-cyan-500
+                   bg-linear-to-r from-sky-600 to-cyan-500
                    shadow-lg shadow-sky-600/30 hover:shadow-sky-600/50 hover:brightness-110
                    active:scale-[.98] transition-all"
           >

@@ -70,7 +70,7 @@ function close() { emit('update:modelValue', false) }
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div v-if="modelValue" class="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="close" />
         <div class="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col">
           <div class="flex items-center justify-between p-5 border-b border-slate-100">
