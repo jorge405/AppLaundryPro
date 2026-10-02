@@ -108,7 +108,7 @@ function close() { emit('update:modelValue', false) }
                 <p v-if="errors.quantity" class="mt-1 text-xs text-rose-500">{{ errors.quantity }}</p>
               </div>
               <div>
-                <label class="label">Precio (€)</label>
+                <label class="label">Precio </label>
                 <input v-model.number="form.price" type="number" min="0" step="0.01" class="input" />
               </div>
             </div>

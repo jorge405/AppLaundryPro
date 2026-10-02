@@ -284,7 +284,7 @@ async function factoryReset() {
         materiales, máquinas y clientes.
       </p>
       <p class="text-xs text-slate-400 mt-3">
-        Vue 3 · Vite · TailwindCSS v4 · Pinia · localStorage — v1.1.0
+        Desarrollado por <a href="https://digitaldevtech.com" target="_blank" class="underline hover:text-slate-600">DigitalDevTech</a> ·
       </p>
     </section>
   </div>

@@ -165,7 +165,7 @@ function loginDemo() {
 
       <!-- Footer debajo de card -->
       <p class="text-center text-xs text-white/60 mt-6">
-        © {{ new Date().getFullYear() }} LaundryPro · Vue 3 + TailwindCSS v4
+        © {{ new Date().getFullYear() }} LaundryPro · DigitalDevTech Derechos reservados · <a href="https://laundrypro.app" target="_blank" class="underline hover:text-white">laundrypro.app</a>
       </p>
     </div>
   </div>

@@ -120,7 +120,7 @@ function close() { emit('update:modelValue', false) }
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="label">Precio unitario (€)</label>
+                <label class="label">Precio unitario </label>
                 <input v-model.number="form.price" type="number" min="0" step="0.01" class="input" />
               </div>
               <div>
