@@ -98,9 +98,12 @@ function close() { emit('update:modelValue', false) }
               </div>
               <div>
                 <label class="label">Estado</label>
-                <select v-model="form.status" class="input">
-                  <option v-for="s in MACHINE_STATUSES" :key="s.id" :value="s.id">{{ s.label }}</option>
-                </select>
+                <div class="input flex items-center bg-slate-50 text-slate-500 cursor-default">
+                  {{ MACHINE_STATUSES.find(s => s.id === form.status)?.label }}
+                </div>
+                <p class="mt-1 text-xs text-slate-400">
+                  El estado y sus datos se cambian desde «Cambiar estado».
+                </p>
               </div>
             </div>
 

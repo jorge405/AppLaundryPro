@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import ItemViewModal from '@/components/ItemViewModal.vue'
+import ItemReceiptModal from '@/components/ItemReceiptModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -14,13 +15,17 @@ const { confirm } = useConfirm()
 const search = ref('')
 const filterCategory = ref('all')
 const filterStatus = ref('all')
+const filterView = ref('activos')
 const sortBy = ref('recent')
 
 // Modales
 const formModalOpen = ref(false)
 const viewModalOpen = ref(false)
-const selectedItem = ref(null)       // Para editar
-const viewingItem = ref(null)        // Para ver
+const receiptModalOpen = ref(false)
+
+const selectedItem = ref(null)   // editar
+const viewingItem = ref(null)    // ver
+const receiptItem = ref(null)    // comprobante
 
 const filtered = computed(() => {
   let list = items.items
@@ -34,6 +39,9 @@ const filtered = computed(() => {
   }
   if (filterCategory.value !== 'all') list = list.filter(i => i.category === filterCategory.value)
   if (filterStatus.value !== 'all') list = list.filter(i => i.status === filterStatus.value)
+  if (filterView.value === 'activos') list = list.filter(i => !i.cancelled && !i.archived)
+  if (filterView.value === 'cancelados') list = list.filter(i => i.cancelled)
+  if (filterView.value === 'archivados') list = list.filter(i => i.archived)
 
   const sorted = [...list]
   if (sortBy.value === 'recent') sorted.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -50,13 +58,20 @@ function openCreate() {
 
 function openEdit(item) {
   selectedItem.value = item
-  viewModalOpen.value = false   // cierra el view si estaba abierto
+  viewModalOpen.value = false
+  receiptModalOpen.value = false
   formModalOpen.value = true
 }
 
 function openView(item) {
   viewingItem.value = item
   viewModalOpen.value = true
+}
+
+// 🧾 Abrir modal de comprobante
+function openReceipt(item) {
+  receiptItem.value = item
+  receiptModalOpen.value = true
 }
 
 // Cuando desde el modal de Ver pulsan "Editar prenda"
@@ -79,15 +94,55 @@ async function handleDelete(id) {
 }
 
 function handleAdvance(id) {
-  items.advanceStatus(id)
   const item = items.getById(id)
-  toast.info(`${item.name} → ${STATUSES.find(s => s.id === item.status)?.label}`)
+  const res = items.advanceStatus(id)
+  if (res?.blocked) {
+    toast.error('Prenda bloqueada: ya está cobrada o entregada')
+    return
+  }
+  const updated = items.getById(id)
+  toast.info(`${updated.name} → ${STATUSES.find(s => s.id === updated.status)?.label}`)
 }
 
 function clearFilters() {
   search.value = ''
   filterCategory.value = 'all'
   filterStatus.value = 'all'
+  filterView.value = 'activos'
+}
+
+/* ===== Cancelar / archivar ===== */
+async function handleCancel(item) {
+  const ok = await confirm({
+    title: 'Cancelar prenda',
+    message: `¿Cancelar "${item.name}"? No se borra, queda registrada como cancelada y puedes reactivarla.`,
+    confirmText: 'Cancelar prenda',
+    danger: true
+  })
+  if (!ok) return
+  items.cancelItem(item.id)
+  toast.success('Prenda cancelada')
+}
+
+function handleReactivate(item) {
+  items.reactivateItem(item.id)
+  toast.success('Prenda reactivada')
+}
+
+async function handleArchive(item) {
+  const ok = await confirm({
+    title: 'Archivar prenda',
+    message: `¿Archivar "${item.name}"? Dejará de aparecer en la lista de prendas activas.`,
+    confirmText: 'Archivar'
+  })
+  if (!ok) return
+  items.archiveItem(item.id)
+  toast.success('Prenda archivada')
+}
+
+function handleUnarchive(item) {
+  items.unarchiveItem(item.id)
+  toast.success('Prenda desarchivada')
 }
 </script>
 
@@ -102,15 +157,21 @@ function clearFilters() {
         <input v-model="search" placeholder="Buscar por nombre, código o nota..." class="input pl-10" />
       </div>
       <div class="flex flex-wrap gap-2">
-        <select v-model="filterCategory" class="input w-auto min-w-35">
+        <select v-model="filterCategory" class="input w-auto min-w-[140px]">
           <option value="all">Todas categorías</option>
           <option v-for="c in CATEGORIES" :key="c.id" :value="c.id">{{ c.icon }} {{ c.label }}</option>
         </select>
-        <select v-model="filterStatus" class="input w-auto min-w-35">
+        <select v-model="filterStatus" class="input w-auto min-w-[140px]">
           <option value="all">Todos estados</option>
           <option v-for="s in STATUSES" :key="s.id" :value="s.id">{{ s.label }}</option>
         </select>
-        <select v-model="sortBy" class="input w-auto min-w-32.5">
+        <select v-model="filterView" data-view-filter="1" class="input w-auto min-w-[140px]">
+          <option value="activos">Activos</option>
+          <option value="cancelados">Cancelados</option>
+          <option value="archivados">Archivados</option>
+          <option value="todos">Todos</option>
+        </select>
+        <select v-model="sortBy" class="input w-auto min-w-[130px]">
           <option value="recent">Recientes</option>
           <option value="name">Nombre</option>
           <option value="price">Precio</option>
@@ -127,7 +188,7 @@ function clearFilters() {
       <p class="text-slate-500">
         <span class="font-medium text-slate-800">{{ filtered.length }}</span> de {{ items.stats.total }} prendas
       </p>
-      <button v-if="search || filterCategory !== 'all' || filterStatus !== 'all'" @click="clearFilters" class="text-indigo-600 hover:text-indigo-700 font-medium">
+      <button v-if="search || filterCategory !== 'all' || filterStatus !== 'all' || filterView !== 'activos'" @click="clearFilters" class="text-indigo-600 hover:text-indigo-700 font-medium">
         Limpiar filtros
       </button>
     </div>
@@ -140,14 +201,19 @@ function clearFilters() {
         :item="item"
         @view="openView"
         @edit="openEdit"
+        @view-receipt="openReceipt"
         @delete="handleDelete"
         @advance="handleAdvance"
+        @cancel="handleCancel"
+        @reactivate="handleReactivate"
+        @archive="handleArchive"
+        @unarchive="handleUnarchive"
       />
     </div>
 
     <!-- Vacío -->
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🧺</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🧺</div>
       <h3 class="font-semibold text-slate-900">{{ items.stats.total ? 'Sin resultados' : 'Empieza tu primera prenda' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ items.stats.total ? 'Prueba con otros filtros de búsqueda.' : 'Registra trajes, camas y ropa para comenzar a gestionar.' }}
@@ -162,6 +228,11 @@ function clearFilters() {
       v-model="viewModalOpen"
       :item="viewingItem"
       @edit="onViewEdit"
+    />
+    <ItemReceiptModal
+      v-model="receiptModalOpen"
+      :item="receiptItem"
+      @charged="() => toast.success('Prenda cobrada')"
     />
   </div>
 </template>

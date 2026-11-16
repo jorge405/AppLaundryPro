@@ -2,18 +2,15 @@
 import { ref, computed } from 'vue'
 import { useMaterialsStore, MATERIAL_CATEGORIES } from '@/stores/materials.js'
 import MaterialFormModal from '@/components/MaterialFormModal.vue'
+import MaterialStockModal from '@/components/MaterialStockModal.vue'
+import MaterialsMovements from '@/components/MaterialsMovements.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { formatMoney } from '@/utils/format'
-import InlineEdit from '@/components/InlineEdit.vue'
 import { useSettingsStore } from '@/stores/settings'
 
 const settings = useSettingsStore()
-
-function updateField(id, field, value) {
-  store.updateMaterial(id, { [field]: value })
-}
 
 const store = useMaterialsStore()
 const toast = useToast()
@@ -23,7 +20,10 @@ const search = ref('')
 const filterCategory = ref('all')
 const filterStock = ref('all')
 const modalOpen = ref(false)
+const stockModalOpen = ref(false)
 const editing = ref(null)
+const stockMaterial = ref(null)
+const tab = ref('inventario')
 
 const filtered = computed(() => {
   let list = store.materials
@@ -43,6 +43,7 @@ const filtered = computed(() => {
 
 function openCreate() { editing.value = null; modalOpen.value = true }
 function openEdit(item) { editing.value = item; modalOpen.value = true }
+function openStock(item) { stockMaterial.value = item; stockModalOpen.value = true }
 
 async function handleDelete(id) {
   const item = store.getById(id)
@@ -58,12 +59,6 @@ async function handleDelete(id) {
   }
 }
 
-function adjust(id, delta) {
-  store.adjustStock(id, delta)
-  const m = store.getById(id)
-  toast.info(`${m.name}: ${m.stock} ${m.unit}`)
-}
-
 function clearFilters() {
   search.value = ''
   filterCategory.value = 'all'
@@ -76,6 +71,36 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
 
 <template>
   <div class="space-y-5">
+    <!-- Pestañas -->
+    <div class="flex items-center gap-1 border-b border-slate-200">
+      <button
+        @click="tab = 'inventario'"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+          tab === 'inventario'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+        ]"
+      >
+        Inventario
+      </button>
+      <button
+        @click="tab = 'movimientos'"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors inline-flex items-center gap-2',
+          tab === 'movimientos'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+        ]"
+      >
+        Movimientos
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+          {{ store.allMovements.length }}
+        </span>
+      </button>
+    </div>
+
+    <template v-if="tab === 'inventario'">
     <!-- KPIs -->
     <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard label="Materiales" :value="store.stats.total" color="sky"
@@ -135,11 +160,7 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
           {{ catIcon(m.category) }}
         </div>
         <div class="min-w-0 flex-1">
-          <InlineEdit
-            :model-value="m.name"
-            @update:model-value="v => updateField(m.id, 'name', v)"
-            class="font-semibold text-slate-900 block truncate"
-          />
+          <p class="font-semibold text-slate-900 truncate">{{ m.name }}</p>
           <p class="text-xs text-slate-500">{{ m.code }} · {{ catLabel(m.category) }}</p>
         </div>
       </div>
@@ -157,60 +178,31 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
 
     <div class="grid grid-cols-3 gap-2 text-center py-2 border-y border-slate-100">
       <div>
-        <InlineEdit
-          :model-value="m.stock"
-          type="number"
-          :min="0"
-          :step="0.1"
-          align="center"
-          @update:model-value="v => updateField(m.id, 'stock', Number(v))"
-          class="text-lg font-bold text-slate-900 block w-full"
-        />
+        <p class="text-lg font-bold text-slate-900">{{ m.stock }}</p>
         <p class="text-xs text-slate-500">{{ m.unit }}</p>
       </div>
       <div>
-        <InlineEdit
-          :model-value="m.minStock"
-          type="number"
-          :min="0"
-          :step="0.1"
-          align="center"
-          @update:model-value="v => updateField(m.id, 'minStock', Number(v))"
-          class="text-lg font-bold text-slate-900 block w-full"
-        />
+        <p class="text-lg font-bold text-slate-900">{{ m.minStock }}</p>
         <p class="text-xs text-slate-500">mínimo</p>
       </div>
       <div>
-        <div class="text-lg font-bold text-slate-900 inline-flex items-center justify-center gap-0.5 w-full">
+        <p class="text-lg font-bold text-slate-900 inline-flex items-center justify-center gap-0.5">
           <span class="text-slate-400 text-[10px] uppercase">{{ settings.current.symbol }}</span>
-          <InlineEdit
-            :model-value="m.price || 0"
-            type="number"
-            :min="0"
-            :step="0.01"
-            align="center"
-            @update:model-value="v => updateField(m.id, 'price', Number(v))"
-          />
-        </div>
+          {{ settings.format(m.price || 0) }}
+        </p>
         <p class="text-xs text-slate-500">precio</p>
       </div>
     </div>
 
-    <InlineEdit
-      :model-value="m.supplier"
-      placeholder="Proveedor..."
-      @update:model-value="v => updateField(m.id, 'supplier', v)"
-      class="text-xs text-slate-500"
-    >
+    <p class="text-xs text-slate-500 truncate">
       <span v-if="m.supplier">🏭 {{ m.supplier }}</span>
       <span v-else class="text-slate-300 italic">+ Proveedor</span>
-    </InlineEdit>
+    </p>
 
     <div class="flex items-center gap-2 pt-2 mt-auto">
-      <div class="flex items-center gap-1">
-        <button @click="adjust(m.id, -1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">−</button>
-        <button @click="adjust(m.id, +1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">+</button>
-      </div>
+      <button @click="openStock(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-emerald-200 text-emerald-700">
+        + Agregar stock
+      </button>
       <button @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
       </button>
@@ -231,6 +223,11 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
       <button v-else @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
     </div>
 
+    </template>
+
+    <MaterialsMovements v-else />
+
     <MaterialFormModal v-model="modalOpen" :item="editing" />
+    <MaterialStockModal v-model="stockModalOpen" :material="stockMaterial" />
   </div>
 </template>

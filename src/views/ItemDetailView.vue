@@ -20,25 +20,68 @@ const { confirm } = useConfirm()
 const modalOpen = ref(false)
 
 const item = computed(() => items.getById(route.params.id))
+const order = computed(() => items.getOrderByItem(item.value))
+const lines = computed(() => order.value?.lines || (item.value ? [item.value] : []))
 const cat = computed(() => CATEGORIES.find(c => c.id === item.value?.category))
-const history = computed(() => [...(item.value?.history || [])].reverse())
+const catOf = (line) => CATEGORIES.find(c => c.id === line?.category)
+const subtotal = computed(() =>
+  lines.value.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0)
+)
+const total = computed(() => subtotal.value)
+const history = computed(() => {
+  const all = lines.value.flatMap(i => (i.history || []).map(h => ({ ...h, code: i.code })))
+  return all.sort((a, b) => (b.at || '').localeCompare(a.at || ''))
+})
 
 async function handleDelete() {
   const ok = await confirm({
-    title: 'Eliminar prenda',
-    message: `¿Eliminar "${item.value.name}"?`,
+    title: 'Eliminar pedido',
+    message: `¿Eliminar el pedido ${order.value?.code || ''} con ${lines.value.length} prenda(s)? Esta acción no se puede deshacer.`,
     confirmText: 'Eliminar',
     danger: true
   })
   if (ok) {
-    items.removeItem(item.value.id)
-    toast.success('Prenda eliminada')
+    for (const l of lines.value) items.removeItem(l.id)
+    toast.success('Pedido eliminado')
     router.push({ name: 'items' })
   }
 }
 
+async function handleCancel() {
+  const ok = await confirm({
+    title: 'Cancelar pedido',
+    message: '¿Cancelar este pedido? No se borra, queda registrado como cancelado y puedes reactivarlo.',
+    confirmText: 'Cancelar pedido',
+    danger: true
+  })
+  if (!ok) return
+  items.cancelOrder(order.value?.id || item.value.id)
+  toast.success('Pedido cancelado')
+}
+
+function handleReactivate() {
+  items.reactivateOrder(order.value?.id || item.value.id)
+  toast.success('Pedido reactivado')
+}
+
+async function handleArchive() {
+  const ok = await confirm({
+    title: 'Archivar pedido',
+    message: '¿Archivar este pedido? Dejará de aparecer en la lista de prendas activas.',
+    confirmText: 'Archivar'
+  })
+  if (!ok) return
+  items.archiveOrder(order.value?.id || item.value.id)
+  toast.success('Pedido archivado')
+}
+
+function handleUnarchive() {
+  items.unarchiveOrder(order.value?.id || item.value.id)
+  toast.success('Pedido desarchivado')
+}
+
 function advance() {
-  items.advanceStatus(item.value.id)
+  for (const l of lines.value) items.advanceStatus(l.id)
   const updated = items.getById(item.value.id)
   toast.info(`Estado: ${STATUSES.find(s => s.id === updated.status)?.label}`)
 }
@@ -62,10 +105,47 @@ function advance() {
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <h1 class="text-xl font-bold text-slate-900">{{ item.name }}</h1>
-                  <p class="text-sm text-slate-500 mt-0.5">{{ item.code }} · {{ cat?.label }}</p>
+                  <h1 class="text-xl font-bold text-slate-900">{{ order?.code || item.code }}</h1>
+                  <p class="text-sm text-slate-500 mt-0.5">
+                    {{ order?.count || 1 }} prenda(s) · {{ item.clientName || cat?.label }}
+                  </p>
                 </div>
                 <StatusBadge :status="item.status" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de prendas -->
+          <div class="mt-6 pt-6 border-t border-slate-100">
+            <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Prendas</p>
+            <div class="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+              <RouterLink
+                v-for="line in lines"
+                :key="line.id"
+                :to="{ name: 'item-detail', params: { id: line.id } }"
+                class="flex items-center justify-between gap-3 px-3.5 py-2.5 hover:bg-slate-50"
+              >
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-800 truncate">
+                    {{ line.quantity || 1 }} × {{ line.name }}
+                  </p>
+                  <p class="text-xs text-slate-500">{{ catOf(line)?.label }} · {{ line.code }}</p>
+                </div>
+                <p class="text-sm font-semibold text-slate-800 whitespace-nowrap">
+                  {{ settings.format((Number(line.price) || 0) * (Number(line.quantity) || 1)) }}
+                </p>
+              </RouterLink>
+            </div>
+
+            <!-- Totales -->
+            <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4 mt-4 space-y-1.5">
+              <div class="flex items-center justify-between text-sm">
+                <p class="text-emerald-700">Subtotal ({{ lines.length }} prendas)</p>
+                <p class="font-medium text-emerald-800">{{ settings.format(subtotal) }}</p>
+              </div>
+              <div class="flex items-center justify-between pt-1.5 border-t border-emerald-200">
+                <p class="text-emerald-700 uppercase tracking-wide font-semibold">Total</p>
+                <p class="text-2xl font-bold text-emerald-700">{{ settings.format(total) }}</p>
               </div>
             </div>
           </div>
@@ -73,19 +153,28 @@ function advance() {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
             <div>
               <p class="text-xs text-slate-500 uppercase tracking-wide">Cantidad</p>
-              <p class="mt-1 font-semibold text-slate-900">{{ item.quantity || 1 }} ud</p>
+              <p class="mt-1 font-semibold text-slate-900">{{ lines.length }} ud</p>
             </div>
             <div>
               <p class="text-xs text-slate-500 uppercase tracking-wide">Precio</p>
               <p class="mt-1 font-semibold text-slate-900">{{ settings.format(item.price) }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-500 uppercase tracking-wide">Recogida</p>
+              <p class="text-xs text-slate-500 uppercase tracking-wide">Entregado</p>
               <p class="mt-1 font-semibold text-slate-900 text-sm">{{ item.pickup ? formatDate(item.pickup) : '—' }}</p>
             </div>
             <div>
               <p class="text-xs text-slate-500 uppercase tracking-wide">Entrega</p>
               <p class="mt-1 font-semibold text-slate-900 text-sm">{{ item.delivery ? formatDate(item.delivery) : '—' }}</p>
+            </div>
+          </div>
+
+          <div v-if="item.clientName" class="mt-6 pt-6 border-t border-slate-100">
+            <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Cliente</p>
+            <div class="space-y-1 text-sm">
+              <p class="font-semibold text-slate-900">{{ item.clientName }}</p>
+              <p v-if="item.clientPhone" class="text-slate-600">📱 {{ item.clientPhone }}</p>
+              <p v-if="item.clientPhone2" class="text-slate-600">📱 {{ item.clientPhone2 }}</p>
             </div>
           </div>
 
@@ -115,14 +204,42 @@ function advance() {
       <div class="space-y-3">
         <div class="card p-5 space-y-2">
           <h3 class="text-sm font-semibold text-slate-900 mb-2">Acciones rápidas</h3>
-          <button v-if="item.status !== 'entregado'" @click="advance" class="btn-primary w-full">
+          <button v-if="item.status !== 'cobrado' && !item.cancelled && !item.archived" @click="advance" class="btn-primary w-full">
             Avanzar estado
           </button>
           <button @click="modalOpen = true" class="btn-ghost w-full border border-slate-200">
-            Editar prenda
+            Editar pedido
+          </button>
+          <button
+            v-if="!item.cancelled"
+            @click="handleCancel"
+            class="btn-ghost w-full border border-slate-200 text-slate-600"
+          >
+            Cancelar pedido
+          </button>
+          <button
+            v-else
+            @click="handleReactivate"
+            class="btn-ghost w-full border border-emerald-200 text-emerald-600"
+          >
+            Reactivar pedido
+          </button>
+          <button
+            v-if="!item.archived"
+            @click="handleArchive"
+            class="btn-ghost w-full border border-slate-200 text-slate-600"
+          >
+            Archivar pedido
+          </button>
+          <button
+            v-else
+            @click="handleUnarchive"
+            class="btn-ghost w-full border border-indigo-200 text-indigo-600"
+          >
+            Desarchivar pedido
           </button>
           <button @click="handleDelete" class="btn-ghost w-full text-rose-500 hover:bg-rose-50">
-            Eliminar
+            Eliminar definitivamente
           </button>
         </div>
 

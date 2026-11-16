@@ -5,12 +5,12 @@ import { STATUSES } from '@/stores/Items.js'
 const props = defineProps({ status: String })
 
 const map = {
-  pendiente: 'bg-amber-50 text-amber-700 ring-amber-200',
-  lavando: 'bg-sky-50 text-sky-700 ring-sky-200',
-  secando: 'bg-violet-50 text-violet-700 ring-violet-200',
-  planchando: 'bg-rose-50 text-rose-700 ring-rose-200',
-  listo: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  entregado: 'bg-slate-100 text-slate-600 ring-slate-200'
+  pendiente:   'bg-amber-50 text-amber-700 ring-amber-200',
+  lavando:     'bg-sky-50 text-sky-700 ring-sky-200',
+  secando:     'bg-violet-50 text-violet-700 ring-violet-200',
+  planchando:  'bg-rose-50 text-rose-700 ring-rose-200',
+  listo:       'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  cobrado:     'bg-teal-50 text-teal-700 ring-teal-200'
 }
 
 const label = computed(() => STATUSES.find(s => s.id === props.status)?.label || props.status)

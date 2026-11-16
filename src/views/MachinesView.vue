@@ -2,17 +2,15 @@
 import { ref, computed } from 'vue'
 import { useMachinesStore, MACHINE_TYPES, MACHINE_STATUSES } from '@/stores/machines.js'
 import MachineFormModal from '@/components/MachineFormModal.vue'
+import MachineStatusModal from '@/components/MachineStatusModal.vue'
+import MachineMovements from '@/components/MachineMovements.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { formatDate } from '@/utils/format'
+import { useSettingsStore } from '@/stores/settings'
 
-import InlineEdit from '@/components/InlineEdit.vue'
-import QuickStatusSelect from '@/components/QuickStatusSelect.vue'
-
-function updateField(id, field, value) {
-  store.updateMachine(id, { [field]: value })
-}
+const settings = useSettingsStore()
 
 const store = useMachinesStore()
 const toast = useToast()
@@ -22,9 +20,10 @@ const search = ref('')
 const filterType = ref('all')
 const filterStatus = ref('all')
 const modalOpen = ref(false)
+const statusModalOpen = ref(false)
 const editing = ref(null)
-const detailOpen = ref(false)
-const selected = ref(null)
+const statusMachine = ref(null)
+const tab = ref('inventario')
 
 const filtered = computed(() => {
   let list = store.machines
@@ -44,7 +43,7 @@ const filtered = computed(() => {
 
 function openCreate() { editing.value = null; modalOpen.value = true }
 function openEdit(item) { editing.value = item; modalOpen.value = true }
-function openDetail(item) { selected.value = item; detailOpen.value = true }
+function openStatus(item) { statusMachine.value = item; statusModalOpen.value = true }
 
 async function handleDelete(id) {
   const item = store.getById(id)
@@ -60,18 +59,13 @@ async function handleDelete(id) {
   }
 }
 
-function changeStatus(id, status) {
-  store.updateMachine(id, { status })
-  toast.info(`Estado cambiado a ${MACHINE_STATUSES.find(s => s.id === status)?.label}`)
-}
-
 function clearFilters() {
   search.value = ''
   filterType.value = 'all'
   filterStatus.value = 'all'
 }
 
-const typeIcon = (id) => MACHINE_TYPES.find(t => t.id === id)?.icon || '⚙️'
+const typeIcon = (id) => MACHINE_TYPES.find(t => t.id === id)?.icon || '�a"️'
 const typeLabel = (id) => MACHINE_TYPES.find(t => t.id === id)?.label || id
 
 const statusStyles = {
@@ -80,10 +74,50 @@ const statusStyles = {
   averiada: 'bg-rose-50 text-rose-700 ring-rose-200',
   inactiva: 'bg-slate-100 text-slate-600 ring-slate-200'
 }
+const statusOf = (id) => MACHINE_STATUSES.find(s => s.id === id)?.label || id
+
+const fmtDay = (iso) => (iso ? formatDate(iso) : '�')
+/** Solo la fecha (sin hora) */
+const fmtDateOnly = (iso) => {
+  if (!iso) return '�'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 </script>
 
 <template>
   <div class="space-y-5">
+    <!-- Pestañas -->
+    <div class="flex items-center gap-1 border-b border-slate-200">
+      <button
+        @click="tab = 'inventario'"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+          tab === 'inventario'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+        ]"
+      >
+        Inventario
+      </button>
+      <button
+        @click="tab = 'movimientos'"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors inline-flex items-center gap-2',
+          tab === 'movimientos'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700'
+        ]"
+      >
+        Movimientos
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+          {{ store.machines.reduce((s, m) => s + (m.history?.length || 0), 0) }}
+        </span>
+      </button>
+    </div>
+
+    <template v-if="tab === 'inventario'">
     <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard label="Total máquinas" :value="store.stats.total" color="indigo"
         icon="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
@@ -124,48 +158,26 @@ const statusStyles = {
           {{ typeIcon(m.type) }}
         </div>
         <div class="min-w-0 flex-1">
-          <InlineEdit
-            :model-value="m.name"
-            @update:model-value="v => updateField(m.id, 'name', v)"
-            class="font-semibold text-slate-900 block truncate"
-          />
+          <p class="font-semibold text-slate-900 truncate">{{ m.name }}</p>
           <p class="text-xs text-slate-500">{{ m.code }} · {{ typeLabel(m.type) }}</p>
         </div>
       </div>
-      <QuickStatusSelect
-        :model-value="m.status"
-        :options="MACHINE_STATUSES.map(s => ({ id: s.id, label: s.label, color: s.color }))"
-        @update:model-value="v => changeStatus(m.id, v)"
-      />
+      <span :class="['px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset shrink-0', statusStyles[m.status] || statusStyles.inactiva]">
+        {{ statusOf(m.status) }}
+      </span>
     </div>
 
     <div class="text-sm text-slate-600 space-y-1.5">
       <div class="flex items-center gap-1">
         <span class="text-slate-400 shrink-0">Modelo:</span>
-        <InlineEdit
-          :model-value="[m.brand, m.model].filter(Boolean).join(' ')"
-          placeholder="Marca / modelo..."
-          @update:model-value="v => {
-            const [brand, ...rest] = (v || '').split(' ');
-            updateField(m.id, 'brand', brand);
-            updateField(m.id, 'model', rest.join(' '));
-          }"
-        >
-          <span v-if="m.brand || m.model" class="truncate">{{ m.brand }} {{ m.model }}</span>
-          <span v-else class="text-slate-300 italic text-xs">+ Añadir marca y modelo</span>
-        </InlineEdit>
+        <span v-if="m.brand || m.model" class="truncate">{{ m.brand }} {{ m.model }}</span>
+        <span v-else class="text-slate-300 italic text-xs">Sin marca / modelo</span>
       </div>
 
       <div class="flex items-center gap-1">
         <span class="text-slate-400 shrink-0">Ubicación:</span>
-        <InlineEdit
-          :model-value="m.location"
-          placeholder="Ubicación..."
-          @update:model-value="v => updateField(m.id, 'location', v)"
-        >
-          <span v-if="m.location" class="truncate">{{ m.location }}</span>
-          <span v-else class="text-slate-300 italic text-xs">+ Sin ubicación</span>
-        </InlineEdit>
+        <span v-if="m.location" class="truncate">{{ m.location }}</span>
+        <span v-else class="text-slate-300 italic text-xs">Sin ubicación</span>
       </div>
 
       <p v-if="m.nextMaintenance" class="text-slate-500 text-xs">
@@ -173,7 +185,68 @@ const statusStyles = {
       </p>
     </div>
 
+    <!-- ===== INFO DEL ESTADO ===== -->
+    <div
+      v-if="m.status === 'mantenimiento' && m.maintenance"
+      class="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-1.5 text-xs"
+    >
+      <p class="font-semibold text-amber-900">En mantenimiento</p>
+      <p class="text-amber-800">
+        <span class="text-amber-700">Se dejó:</span> {{ fmtDateOnly(m.maintenance.sentDate) }}
+      </p>
+      <p class="text-amber-800">
+        <span class="text-amber-700">Se recoge:</span> {{ fmtDateOnly(m.maintenance.pickupDate) }}
+      </p>
+      <p class="text-amber-800">
+        <span class="text-amber-700">Lugar:</span> {{ m.maintenance.place || '�' }}
+      </p>
+      <p class="text-amber-800">
+        <span class="text-amber-700">Proveedor:</span> {{ m.maintenance.supplier || '�' }}
+      </p>
+      <p class="text-amber-800">
+        <span class="text-amber-700">Precio:</span> {{ settings.format(m.maintenance.cost || 0) }}
+      </p>
+      <p v-if="m.maintenance.notes" class="text-amber-700 pt-1 border-t border-amber-200">{{ m.maintenance.notes }}</p>
+    </div>
+
+    <div
+      v-else-if="m.status === 'averiada' && m.breakdown"
+      class="rounded-xl bg-rose-50 border border-rose-200 p-3 space-y-1.5 text-xs"
+    >
+      <p class="font-semibold text-rose-900">Averiada</p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">Fallo:</span> {{ m.breakdown.fault || '�' }}
+      </p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">Detectado:</span> {{ fmtDateOnly(m.breakdown.detectedDate) }}
+        <span v-if="m.breakdown.reportedBy"> · {{ m.breakdown.reportedBy }}</span>
+      </p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">Lugar:</span> {{ m.breakdown.place || '�' }}
+      </p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">Proveedor:</span> {{ m.breakdown.supplier || '�' }}
+      </p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">Costo estimado:</span> {{ settings.format(m.breakdown.cost || 0) }}
+      </p>
+      <p class="text-rose-800">
+        <span class="text-rose-700">En taller:</span> {{ m.breakdown.inWorkshop ? 'Sí' : 'No' }}
+      </p>
+      <p v-if="m.breakdown.notes" class="text-rose-700 pt-1 border-t border-rose-200">{{ m.breakdown.notes }}</p>
+    </div>
+
+    <div
+      v-else-if="m.status === 'operativa' && m.backToServiceDate"
+      class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800"
+    >
+      <span class="text-emerald-700">Vuelve a servicio:</span> {{ fmtDateOnly(m.backToServiceDate) }}
+    </div>
+
     <div class="flex items-center gap-2 pt-3 border-t border-slate-100 mt-auto">
+      <button @click="openStatus(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-indigo-200 text-indigo-600">
+        Cambiar estado
+      </button>
       <button @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
       </button>
@@ -185,7 +258,7 @@ const statusStyles = {
 </div>
 
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">⚙️</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">�a"️</div>
       <h3 class="font-semibold text-slate-900">{{ store.stats.total ? 'Sin resultados' : 'Sin máquinas registradas' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Registra lavadoras, secadoras, planchas...' }}
@@ -194,6 +267,11 @@ const statusStyles = {
       <button v-else @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
     </div>
 
+    </template>
+
+    <MachineMovements v-else />
+
     <MachineFormModal v-model="modalOpen" :item="editing" />
+    <MachineStatusModal v-model="statusModalOpen" :machine="statusMachine" />
   </div>
 </template>

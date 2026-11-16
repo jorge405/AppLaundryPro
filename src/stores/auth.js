@@ -6,12 +6,19 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(storage.get('user'))
 
   const isAuthenticated = computed(() => !!user.value)
+  /** 'owner' = dueño del negocio · 'manager' = encargado de una empresa */
+  const role = computed(() => user.value?.role || 'owner')
+  const isManager = computed(() => role.value === 'manager')
+  const companyId = computed(() => user.value?.companyId || '')
+  const companyName = computed(() => user.value?.companyName || '')
 
-  function login(name, email) {
+  function login(name, email, extra = {}) {
     user.value = {
       name: name || 'Usuario Demo',
       email: email || 'demo@laundrypro.app',
-      loginAt: new Date().toISOString()
+      role: 'owner',
+      loginAt: new Date().toISOString(),
+      ...extra
     }
     storage.set('user', user.value)
   }
@@ -21,5 +28,8 @@ export const useAuthStore = defineStore('auth', () => {
     storage.remove('user')
   }
 
-  return { user, isAuthenticated, login, logout }
+  return {
+    user, isAuthenticated, role, isManager, companyId, companyName,
+    login, logout
+  }
 })

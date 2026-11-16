@@ -42,6 +42,8 @@ export const useMachinesStore = defineStore('machines', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       history: [{ at: new Date().toISOString(), status: data.status || 'operativa', note: 'Alta de máquina' }],
+      maintenance: null,
+      breakdown: null,
       ...data
     }
     machines.value.unshift(item)
@@ -59,6 +61,59 @@ export const useMachinesStore = defineStore('machines', () => {
     machines.value[idx] = updated
   }
 
+  /**
+   * Cambia el estado de una máquina guardando los datos de la incidencia.
+   * status: operativa | mantenimiento | averiada | inactiva
+   * data: { maintenance: {...} } o { breakdown: {...} }
+   */
+  function setStatus(id, status, data = {}) {
+    const idx = machines.value.findIndex(m => m.id === id)
+    if (idx === -1) return
+    const prev = machines.value[idx]
+    const updated = { ...prev, status, updatedAt: new Date().toISOString() }
+
+    if (status === 'mantenimiento') {
+      updated.maintenance = {
+        sentDate: data.maintenance?.sentDate || '',
+        pickupDate: data.maintenance?.pickupDate || '',
+        place: data.maintenance?.place || '',
+        supplier: data.maintenance?.supplier || '',
+        cost: Number(data.maintenance?.cost) || 0,
+        notes: data.maintenance?.notes || '',
+        registeredAt: new Date().toISOString()
+      }
+    }
+
+    if (status === 'averiada') {
+      updated.breakdown = {
+        fault: data.breakdown?.fault || '',
+        detectedDate: data.breakdown?.detectedDate || '',
+        reportedBy: data.breakdown?.reportedBy || '',
+        place: data.breakdown?.place || '',
+        supplier: data.breakdown?.supplier || '',
+        cost: Number(data.breakdown?.cost) || 0,
+        inWorkshop: data.breakdown?.inWorkshop ?? false,
+        notes: data.breakdown?.notes || '',
+        registeredAt: new Date().toISOString()
+      }
+    }
+
+    if (status === 'operativa') {
+      // vuelve a servicio: se conservan los datos para el historial
+      updated.backToServiceDate = new Date().toISOString().slice(0, 10)
+    }
+
+    const note =
+      status === 'mantenimiento' ? 'Mantenimiento registrado'
+      : status === 'averiada' ? 'Avería registrada'
+      : status === 'operativa' ? 'Vuelve a servicio'
+      : 'Cambio de estado'
+
+    updated.history = [...(prev.history || []), { at: updated.updatedAt, status, note }]
+    machines.value[idx] = updated
+    return updated
+  }
+
   function removeMachine(id) {
     machines.value = machines.value.filter(m => m.id !== id)
   }
@@ -66,5 +121,5 @@ export const useMachinesStore = defineStore('machines', () => {
   function getById(id) { return machines.value.find(m => m.id === id) }
   function reset() { machines.value = [] }
 
-  return { machines, stats, addMachine, updateMachine, removeMachine, getById, reset }
+  return { machines, stats, addMachine, updateMachine, setStatus, removeMachine, getById, reset }
 })

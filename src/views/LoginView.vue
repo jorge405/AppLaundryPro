@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
+import { useSuperAdminStore } from '@/stores/superadmin.js'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const auth = useAuthStore()
+const sa = useSuperAdminStore()
 const toast = useToast()
 
 const email = ref('')
@@ -22,9 +24,26 @@ function submit() {
     toast.error('Introduce email y contraseña')
     return
   }
-  const ok =
-    email.value.trim().toLowerCase() === DEMO.email &&
-    password.value === DEMO.password
+
+  const mail = email.value.trim().toLowerCase()
+
+  // 1) Encargado de una empresa (cliente del superadmin)
+  const company = sa.clients.find(
+    c => (c.email || '').toLowerCase() === mail && c.password === password.value
+  )
+  if (company) {
+    auth.login(company.name, company.email, {
+      role: 'manager',
+      companyId: company.id,
+      companyName: company.name
+    })
+    toast.success(`¡Bienvenido, ${company.name}!`)
+    router.push({ name: 'branches' })
+    return
+  }
+
+  // 2) Dueño del negocio (demo)
+  const ok = mail === DEMO.email && password.value === DEMO.password
 
   if (!ok) {
     toast.error('Credenciales incorrectas. Usa el botón Demo.')
@@ -87,10 +106,13 @@ function loginDemo() {
             </svg>
           </div>
           <div class="text-xs">
-            <p class="font-semibold text-sky-900">Cuenta demo</p>
+            <p class="font-semibold text-sky-900">Cuenta demo (dueño del negocio)</p>
             <p class="text-sky-700 mt-0.5">
               <span class="font-mono">demo@laundrypro.app</span> ·
               <span class="font-mono">demo1234</span>
+            </p>
+            <p class="text-sky-600 mt-1">
+              El encargado de una empresa entra con las credenciales de su empresa.
             </p>
           </div>
         </div>
