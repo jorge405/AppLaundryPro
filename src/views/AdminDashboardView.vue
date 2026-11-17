@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useBranchesStore } from '@/stores/branches.js'
-import { useItemsStore } from '@/stores/items.js'
+import { useItemsStore } from '@/stores/Items.js'
 import { useEmployeesStore } from '@/stores/employees.js'
 import { useSettingsStore } from '@/stores/settings.js'
 
