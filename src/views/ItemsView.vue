@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
+import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items'
 import { useAuthStore } from '@/stores/auth'
 import { useBranchesStore } from '@/stores/branches'
 import { useSettingsStore } from '@/stores/settings'
