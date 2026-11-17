@@ -1,22 +1,31 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.js'
+import { useAuthStore, ROLES } from '@/stores/auth.js'
 import { useSuperAdminStore } from '@/stores/superadmin.js'
+import { useEmployeesStore } from '@/stores/employees.js'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const auth = useAuthStore()
 const sa = useSuperAdminStore()
+const employees = useEmployeesStore()
 const toast = useToast()
 
 const email = ref('')
 const password = ref('')
 
-const DEMO = {
-  name: 'Usuario Demo',
-  email: 'demo@laundrypro.app',
-  password: 'demo1234'
+/** Cuentas de demostración visibles en el login */
+const DEMO_EMPLOYEE = {
+  name: 'Empleado Demo',
+  email: 'empleado@laundrypro.app',
+  password: 'empleado123'
+}
+
+const DEMO_ADMIN = {
+  name: 'Administrador del Negocio',
+  email: 'administrador@laundrypro.app',
+  password: 'admin1234'
 }
 
 function submit() {
@@ -27,38 +36,61 @@ function submit() {
 
   const mail = email.value.trim().toLowerCase()
 
-  // 1) Encargado de una empresa (cliente del superadmin)
+  // 1) Administrador del negocio (empresa cliente del superadmin)
   const company = sa.clients.find(
     c => (c.email || '').toLowerCase() === mail && c.password === password.value
   )
   if (company) {
     auth.login(company.name, company.email, {
-      role: 'manager',
+      role: ROLES.ADMIN,
       companyId: company.id,
       companyName: company.name
     })
     toast.success(`¡Bienvenido, ${company.name}!`)
-    router.push({ name: 'branches' })
+    router.push({ name: 'admin-panel' })
     return
   }
 
-  // 2) Dueño del negocio (demo)
-  const ok = mail === DEMO.email && password.value === DEMO.password
-
-  if (!ok) {
-    toast.error('Credenciales incorrectas. Usa el botón Demo.')
+  // 2) Administrador del negocio (cuenta demo)
+  if (mail === DEMO_ADMIN.email && password.value === DEMO_ADMIN.password) {
+    auth.login(DEMO_ADMIN.name, DEMO_ADMIN.email, { role: ROLES.ADMIN })
+    toast.success(`¡Bienvenido, ${DEMO_ADMIN.name}!`)
+    router.push({ name: 'admin-panel' })
     return
   }
-  auth.login(DEMO.name, DEMO.email)
-  toast.success(`¡Bienvenido, ${DEMO.name}!`)
-  router.push({ name: 'dashboard' })
+
+  // 3) Empleado registrado por el administrador
+  const employee = employees.authenticate(mail, password.value)
+  if (employee) {
+    auth.login(employee.name, employee.email, {
+      role: employee.role || ROLES.EMPLOYEE,
+      branchId: employee.branchId || '',
+      branchName: employee.branchName || ''
+    })
+    toast.success(`¡Bienvenido, ${employee.name}!`)
+    router.push({ name: 'dashboard' })
+    return
+  }
+
+  // 4) Empleado demo
+  if (mail === DEMO_EMPLOYEE.email && password.value === DEMO_EMPLOYEE.password) {
+    auth.login(DEMO_EMPLOYEE.name, DEMO_EMPLOYEE.email, { role: ROLES.EMPLOYEE })
+    toast.success(`¡Bienvenido, ${DEMO_EMPLOYEE.name}!`)
+    router.push({ name: 'dashboard' })
+    return
+  }
+
+  toast.error('Credenciales incorrectas. Revisa las cuentas de demostración.')
 }
 
-function loginDemo() {
-  email.value = DEMO.email
-  password.value = DEMO.password
-  toast.info('Credenciales demo cargadas. Pulsa Entrar.')
+function fill(account) {
+  email.value = account.email
+  password.value = account.password
+  toast.info('Credenciales cargadas. Pulsa Entrar.')
 }
+
+const fillEmployee = () => fill(DEMO_EMPLOYEE)
+const fillAdmin = () => fill(DEMO_ADMIN)
 </script>
 
 <template>
@@ -83,7 +115,7 @@ function loginDemo() {
       <div class="flex flex-col items-center mb-6">
         <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-xl border border-white/30 grid place-items-center shadow-2xl shadow-sky-900/40">
           <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a6 6 0 00-1.806.547M8 4h8l-1 1v5.172a6 6 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A6 6 0 009 10.172V5L8 4z"/>
           </svg>
         </div>
         <h1 class="mt-4 text-2xl font-bold text-white tracking-tight">LaundryPro</h1>
@@ -98,22 +130,48 @@ function loginDemo() {
           <p class="text-sm text-slate-500 mt-1">Accede a tu panel de limpieza</p>
         </div>
 
-        <!-- Alerta demo -->
-        <div class="mb-5 flex items-start gap-3 p-3.5 rounded-xl bg-sky-50 border border-sky-100">
-          <div class="w-8 h-8 rounded-lg bg-sky-100 grid place-items-center shrink-0">
-            <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+        <!-- Cuentas de demostración -->
+        <div class="mb-5 space-y-3">
+          <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 grid place-items-center shrink-0">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+              </div>
+              <div class="text-xs flex-1">
+                <p class="font-semibold text-emerald-900">Empleado</p>
+                <p class="text-emerald-700 mt-0.5">
+                  <span class="font-mono">empleado@laundrypro.app</span> ·
+                  <span class="font-mono">empleado123</span>
+                </p>
+                <p class="text-emerald-600 mt-1">Crea prendas, materiales, máquinas y gestiona clientes.</p>
+              </div>
+              <button type="button" @click="fillEmployee" class="btn-ghost text-[11px] px-2 py-1 shrink-0 border border-emerald-200 text-emerald-700">
+                Usar
+              </button>
+            </div>
           </div>
-          <div class="text-xs">
-            <p class="font-semibold text-sky-900">Cuenta demo (dueño del negocio)</p>
-            <p class="text-sky-700 mt-0.5">
-              <span class="font-mono">demo@laundrypro.app</span> ·
-              <span class="font-mono">demo1234</span>
-            </p>
-            <p class="text-sky-600 mt-1">
-              El encargado de una empresa entra con las credenciales de su empresa.
-            </p>
+
+          <div class="p-3.5 rounded-xl bg-violet-50 border border-violet-100">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-violet-100 grid place-items-center shrink-0">
+                <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <div class="text-xs flex-1">
+                <p class="font-semibold text-violet-900">Administrador del negocio</p>
+                <p class="text-violet-700 mt-0.5">
+                  <span class="font-mono">administrador@laundrypro.app</span> ·
+                  <span class="font-mono">admin1234</span>
+                </p>
+                <p class="text-violet-600 mt-1">Ve y crea sucursales, reportes y gestión de empleados.</p>
+              </div>
+              <button type="button" @click="fillAdmin" class="btn-ghost text-[11px] px-2 py-1 shrink-0 border border-violet-200 text-violet-700">
+                Usar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -124,7 +182,7 @@ function loginDemo() {
               v-model="email"
               type="email"
               autocomplete="username"
-              placeholder="demo@laundrypro.app"
+              placeholder="empleado@laundrypro.app"
               class="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900
                      placeholder-slate-400 outline-none transition
                      focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15"
@@ -155,28 +213,6 @@ function loginDemo() {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
             </svg>
-          </button>
-
-          <div class="relative py-1">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-slate-200"></div>
-            </div>
-            <div class="relative flex justify-center text-xs">
-              <span class="px-3 bg-white text-slate-400">o</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            @click="loginDemo"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium
-                   bg-slate-100 text-slate-700 border border-slate-200
-                   hover:bg-slate-200 active:scale-[.98] transition-all"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-            Rellenar credenciales demo
           </button>
         </form>
 

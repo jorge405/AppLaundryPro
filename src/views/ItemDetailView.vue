@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
+import { useAuthStore } from '@/stores/auth.js'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import { useToast } from '@/composables/useToast'
@@ -14,8 +15,15 @@ const settings = useSettingsStore()
 const route = useRoute()
 const router = useRouter()
 const items = useItemsStore()
+const auth = useAuthStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+/** El administrador del negocio solo consulta el pedido */
+const canEdit = computed(() => auth.can('items.edit'))
+const canManage = computed(() => auth.can('items.cancel'))
+const canArchive = computed(() => auth.can('items.archive'))
+const canDelete = computed(() => auth.can('items.delete'))
 
 const modalOpen = ref(false)
 
@@ -204,43 +212,48 @@ function advance() {
       <div class="space-y-3">
         <div class="card p-5 space-y-2">
           <h3 class="text-sm font-semibold text-slate-900 mb-2">Acciones rápidas</h3>
-          <button v-if="item.status !== 'cobrado' && !item.cancelled && !item.archived" @click="advance" class="btn-primary w-full">
-            Avanzar estado
-          </button>
-          <button @click="modalOpen = true" class="btn-ghost w-full border border-slate-200">
-            Editar pedido
-          </button>
-          <button
-            v-if="!item.cancelled"
-            @click="handleCancel"
-            class="btn-ghost w-full border border-slate-200 text-slate-600"
-          >
-            Cancelar pedido
-          </button>
-          <button
-            v-else
-            @click="handleReactivate"
-            class="btn-ghost w-full border border-emerald-200 text-emerald-600"
-          >
-            Reactivar pedido
-          </button>
-          <button
-            v-if="!item.archived"
-            @click="handleArchive"
-            class="btn-ghost w-full border border-slate-200 text-slate-600"
-          >
-            Archivar pedido
-          </button>
-          <button
-            v-else
-            @click="handleUnarchive"
-            class="btn-ghost w-full border border-indigo-200 text-indigo-600"
-          >
-            Desarchivar pedido
-          </button>
-          <button @click="handleDelete" class="btn-ghost w-full text-rose-500 hover:bg-rose-50">
-            Eliminar definitivamente
-          </button>
+          <div v-if="canEdit || canManage || canArchive || canDelete" class="space-y-2">
+            <button v-if="canEdit && item.status !== 'cobrado' && !item.cancelled && !item.archived" @click="advance" class="btn-primary w-full">
+              Avanzar estado
+            </button>
+            <button v-if="canEdit" @click="modalOpen = true" class="btn-ghost w-full border border-slate-200">
+              Editar pedido
+            </button>
+            <button
+              v-if="canManage && !item.cancelled"
+              @click="handleCancel"
+              class="btn-ghost w-full border border-slate-200 text-slate-600"
+            >
+              Cancelar pedido
+            </button>
+            <button
+              v-else-if="canManage"
+              @click="handleReactivate"
+              class="btn-ghost w-full border border-emerald-200 text-emerald-600"
+            >
+              Reactivar pedido
+            </button>
+            <button
+              v-if="canArchive && !item.archived"
+              @click="handleArchive"
+              class="btn-ghost w-full border border-slate-200 text-slate-600"
+            >
+              Archivar pedido
+            </button>
+            <button
+              v-else-if="canArchive"
+              @click="handleUnarchive"
+              class="btn-ghost w-full border border-indigo-200 text-indigo-600"
+            >
+              Desarchivar pedido
+            </button>
+            <button v-if="canDelete" @click="handleDelete" class="btn-ghost w-full text-rose-500 hover:bg-rose-50">
+              Eliminar definitivamente
+            </button>
+          </div>
+          <p v-else class="text-xs text-slate-400">
+            El administrador del negocio tiene acceso de solo lectura a los pedidos.
+          </p>
         </div>
 
         <div class="card p-5">

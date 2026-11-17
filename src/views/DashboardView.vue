@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/Items.js'
+import { useAuthStore } from '@/stores/auth.js'
 import StatCard from '@/components/StatCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { timeAgo, formatMoney } from '@/utils/format'
@@ -10,6 +11,7 @@ const settings = useSettingsStore()
 
 
 const items = useItemsStore()
+const auth = useAuthStore()
 const recent = computed(() => items.items.slice(0, 5))
 
 const categoryRows = computed(() =>
@@ -48,7 +50,7 @@ const categoryRows = computed(() =>
 
         <div v-if="!recent.length" class="text-center py-10">
           <p class="text-slate-400 text-sm">Aún no hay prendas registradas.</p>
-          <RouterLink :to="{ name: 'items' }" class="btn-primary mt-4 inline-flex">Añadir primera prenda</RouterLink>
+          <RouterLink v-if="auth.can('items.create')" :to="{ name: 'items' }" class="btn-primary mt-4 inline-flex">Añadir primera prenda</RouterLink>
         </div>
 
         <ul v-else class="divide-y divide-slate-100">

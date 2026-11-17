@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/Items.js'
+import { useAuthStore } from '@/stores/auth.js'
 import { useSettingsStore } from '@/stores/settings.js'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -14,9 +15,15 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'edit'])
 
 const items = useItemsStore()
+const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+/** El administrador del negocio solo consulta el pedido */
+const canEdit = computed(() => auth.can('items.edit'))
+const canManage = computed(() => auth.can('items.cancel'))
+const canArchive = computed(() => auth.can('items.archive'))
 
 /** Pedido completo al que pertenece la prenda */
 const order = computed(() => items.getOrderByItem(props.item))
@@ -205,30 +212,30 @@ function onUnarchive() {
 
           <!-- Footer acciones -->
           <div class="p-5 border-t border-slate-100 flex flex-col gap-3">
-            <div class="flex gap-3">
+            <div v-if="canManage || canArchive" class="flex gap-3">
               <button
-                v-if="!item.cancelled"
+                v-if="canManage && !item.cancelled"
                 @click="onCancel"
                 class="btn-ghost flex-1 border border-slate-200 text-slate-600"
               >
                 Cancelar pedido
               </button>
               <button
-                v-else
+                v-else-if="canManage"
                 @click="onReactivate"
                 class="btn-ghost flex-1 border border-emerald-200 text-emerald-600"
               >
                 Reactivar pedido
               </button>
               <button
-                v-if="!item.archived"
+                v-if="canArchive && !item.archived"
                 @click="onArchive"
                 class="btn-ghost flex-1 border border-slate-200 text-slate-600"
               >
                 Archivar
               </button>
               <button
-                v-else
+                v-else-if="canArchive"
                 @click="onUnarchive"
                 class="btn-ghost flex-1 border border-indigo-200 text-indigo-600"
               >
@@ -239,7 +246,7 @@ function onUnarchive() {
               <button @click="close" class="btn-ghost flex-1 border border-slate-200">
                 Cerrar
               </button>
-              <button @click="onEdit" class="btn-primary flex-1">
+              <button v-if="canEdit" @click="onEdit" class="btn-primary flex-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>

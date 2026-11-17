@@ -114,7 +114,7 @@ function stockOf(b) {
         <option value="all">Todas las empresas</option>
         <option v-for="c in companiesInUse" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <button @click="openCreate" class="btn-primary shrink-0">
+      <button v-if="auth.can('branches.create')" @click="openCreate" class="btn-primary shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         Nueva sucursal
       </button>
@@ -187,7 +187,7 @@ function stockOf(b) {
           <span>{{ stockOf(b) }} unid. en stock</span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div v-if="auth.can('branches.edit')" class="flex items-center gap-2">
           <button @click="openEdit(b)" class="btn-ghost text-xs px-2.5 py-1.5 border border-slate-200">Editar</button>
           <button @click="toggleActive(b)" class="btn-ghost text-xs px-2.5 py-1.5 border border-slate-200">
             {{ b.active === false ? 'Activar' : 'Archivar' }}
@@ -203,7 +203,7 @@ function stockOf(b) {
       <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🏪</div>
       <h3 class="font-semibold text-slate-900">Sin sucursales</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">Crea la primera sucursal con su dirección, horario y responsable.</p>
-      <button @click="openCreate" class="btn-primary">Crear sucursal</button>
+      <button v-if="auth.can('branches.create')" @click="openCreate" class="btn-primary">Crear sucursal</button>
     </div>
 
     <BranchFormModal v-model="modalOpen" :branch="editing" />

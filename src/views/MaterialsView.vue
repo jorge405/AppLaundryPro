@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useMaterialsStore, MATERIAL_CATEGORIES } from '@/stores/materials.js'
+import { useAuthStore } from '@/stores/auth.js'
+import { useBranchesStore } from '@/stores/branches.js'
 import MaterialFormModal from '@/components/MaterialFormModal.vue'
 import MaterialStockModal from '@/components/MaterialStockModal.vue'
 import MaterialsMovements from '@/components/MaterialsMovements.vue'
+import BranchGroupCard from '@/components/BranchGroupCard.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -13,12 +16,20 @@ import { useSettingsStore } from '@/stores/settings'
 const settings = useSettingsStore()
 
 const store = useMaterialsStore()
+const auth = useAuthStore()
+const branches = useBranchesStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+/** El administrador del negocio solo consulta materiales y movimientos */
+const canCreate = computed(() => auth.can('materials.create'))
+const canEdit = computed(() => auth.can('materials.edit'))
+const canStock = computed(() => auth.can('materials.stock'))
 
 const search = ref('')
 const filterCategory = ref('all')
 const filterStock = ref('all')
+const filterBranch = ref('all')
 const modalOpen = ref(false)
 const stockModalOpen = ref(false)
 const editing = ref(null)
@@ -36,6 +47,7 @@ const filtered = computed(() => {
     )
   }
   if (filterCategory.value !== 'all') list = list.filter(m => m.category === filterCategory.value)
+  if (filterBranch.value !== 'all') list = list.filter(m => m.branchId === filterBranch.value)
   if (filterStock.value === 'low') list = list.filter(m => m.stock <= (m.minStock || 0))
   if (filterStock.value === 'ok') list = list.filter(m => m.stock > (m.minStock || 0))
   return list
@@ -63,6 +75,60 @@ function clearFilters() {
   search.value = ''
   filterCategory.value = 'all'
   filterStock.value = 'all'
+  filterBranch.value = 'all'
+}
+
+/** Agrupa los materiales por sucursal (incluye un grupo "Sin sucursal") */
+const groups = computed(() => {
+  const map = new Map()
+  for (const m of filtered.value) {
+    const key = m.branchId || '__none__'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key).push(m)
+  }
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const branch = key === '__none__' ? null : branches.getById(key)
+      const stock = list.reduce((s, m) => s + (Number(m.stock) || 0), 0)
+      const value = list.reduce((s, m) => s + (Number(m.stock) || 0) * (Number(m.price) || 0), 0)
+      const low = list.filter(m => Number(m.stock) <= (Number(m.minStock) || 0)).length
+
+      // Fechas de compra / último movimiento del grupo
+      const dates = list
+        .flatMap(m => (m.movements || []).map(mv => mv.date))
+        .filter(Boolean)
+        .sort()
+      const lastBuy = dates.length ? dates[dates.length - 1] : ''
+      const firstBuy = dates.length ? dates[0] : ''
+
+      return {
+        key,
+        branch,
+        list,
+        name: branch?.name || 'Sin sucursal',
+        subtitle: branch
+          ? [branch.manager, branch.address].filter(Boolean).join(' · ') || 'Sin datos de la sucursal'
+          : 'Materiales sin asignar a ninguna sucursal',
+        stats: [
+          { label: 'materiales', value: list.length },
+          { label: 'stock', value: `${stock}` },
+          { label: 'inversión', value: settings.format(value), tone: 'text-emerald-600' },
+          { label: 'stock bajo', value: low, tone: low ? 'text-rose-600' : 'text-slate-900' }
+        ],
+        dates: [
+          { label: 'Última compra', value: lastBuy ? fmtDate(lastBuy) : 'sin registros' },
+          { label: 'Primera compra', value: firstBuy ? fmtDate(firstBuy) : 'sin registros' }
+        ]
+      }
+    })
+    .sort((a, b) => b.list.length - a.list.length)
+})
+
+function fmtDate(d) {
+  if (!d) return ''
+  const dt = new Date(`${d}T00:00:00`)
+  if (Number.isNaN(dt.getTime())) return d
+  return dt.toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const catIcon = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.icon || '📦'
@@ -145,15 +211,30 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
         <option value="low">Stock bajo</option>
         <option value="ok">Stock OK</option>
       </select>
-      <button @click="openCreate" class="btn-primary shrink-0">
+      <select v-model="filterBranch" class="input w-auto min-w-45">
+        <option value="all">Todas las sucursales</option>
+        <option v-for="b in branches.list" :key="b.id" :value="b.id">{{ b.name }}</option>
+      </select>
+      <button v-if="canCreate" @click="openCreate" class="btn-primary shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         Nuevo material
       </button>
     </div>
 
-    <!-- Lista -->
-    <div v-if="filtered.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-  <div v-for="m in filtered" :key="m.id" class="card p-5 flex flex-col gap-3 hover:shadow-md transition">
+    <!-- Lista por sucursal -->
+    <div v-if="filtered.length" class="space-y-5">
+      <BranchGroupCard
+        v-for="g in groups"
+        :key="g.key"
+        :branch="g.branch"
+        :name="g.name"
+        :subtitle="g.subtitle"
+        :stats="g.stats"
+        :dates="g.dates"
+        icon="🧴"
+      >
+        <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+  <div v-for="m in g.list" :key="m.id" class="card p-5 flex flex-col gap-3 hover:shadow-md transition">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <div class="w-11 h-11 rounded-xl bg-slate-100 grid place-items-center text-xl shrink-0">
@@ -200,18 +281,20 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
     </p>
 
     <div class="flex items-center gap-2 pt-2 mt-auto">
-      <button @click="openStock(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-emerald-200 text-emerald-700">
+      <button v-if="canStock" @click="openStock(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-emerald-200 text-emerald-700">
         + Agregar stock
       </button>
-      <button @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
+      <button v-if="canEdit" @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
       </button>
-      <button @click="handleDelete(m.id)" class="btn-ghost text-xs text-rose-500 hover:bg-rose-50 p-2">
+      <button v-if="canEdit" @click="handleDelete(m.id)" class="btn-ghost text-xs text-rose-500 hover:bg-rose-50 p-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/></svg>
       </button>
     </div>
   </div>
-</div>
+        </div>
+      </BranchGroupCard>
+    </div>
 
     <div v-else class="card p-12 text-center">
       <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-sky-100 to-cyan-100 grid place-items-center text-2xl mb-4">🧴</div>
@@ -219,8 +302,8 @@ const catLabel = (id) => MATERIAL_CATEGORIES.find(c => c.id === id)?.label || id
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Añade detergentes, suavizantes y productos de limpieza.' }}
       </p>
-      <button v-if="!store.stats.total" @click="openCreate" class="btn-primary">Crear primer material</button>
-      <button v-else @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
+      <button v-if="!store.stats.total && canCreate" @click="openCreate" class="btn-primary">Crear primer material</button>
+      <button v-else-if="store.stats.total" @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
     </div>
 
     </template>

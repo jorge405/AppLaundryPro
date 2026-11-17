@@ -1,21 +1,33 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useItemsStore, CATEGORIES, STATUSES } from '@/stores/items'
+import { useAuthStore } from '@/stores/auth'
+import { useBranchesStore } from '@/stores/branches'
+import { useSettingsStore } from '@/stores/settings'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemFormModal from '@/components/ItemFormModal.vue'
 import ItemViewModal from '@/components/ItemViewModal.vue'
 import ItemReceiptModal from '@/components/ItemReceiptModal.vue'
+import BranchGroupCard from '@/components/BranchGroupCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
 const items = useItemsStore()
+const auth = useAuthStore()
+const branches = useBranchesStore()
+const settings = useSettingsStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+/** El administrador del negocio solo consulta prendas */
+const canCreate = computed(() => auth.can('items.create'))
+const canEdit = computed(() => auth.can('items.edit'))
 
 const search = ref('')
 const filterCategory = ref('all')
 const filterStatus = ref('all')
 const filterView = ref('activos')
+const filterBranch = ref('all')
 const sortBy = ref('recent')
 
 // Modales
@@ -39,6 +51,7 @@ const filtered = computed(() => {
   }
   if (filterCategory.value !== 'all') list = list.filter(i => i.category === filterCategory.value)
   if (filterStatus.value !== 'all') list = list.filter(i => i.status === filterStatus.value)
+  if (filterBranch.value !== 'all') list = list.filter(i => i.branchId === filterBranch.value)
   if (filterView.value === 'activos') list = list.filter(i => !i.cancelled && !i.archived)
   if (filterView.value === 'cancelados') list = list.filter(i => i.cancelled)
   if (filterView.value === 'archivados') list = list.filter(i => i.archived)
@@ -48,6 +61,39 @@ const filtered = computed(() => {
   if (sortBy.value === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
   if (sortBy.value === 'price') sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
   return sorted
+})
+
+/** Agrupa las prendas por sucursal (incluye un grupo "Sin sucursal") */
+const groups = computed(() => {
+  const map = new Map()
+  for (const item of filtered.value) {
+    const key = item.branchId || '__none__'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key).push(item)
+  }
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const branch = key === '__none__' ? null : branches.getById(key)
+      const total = list.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0)
+      const enProceso = list.filter(i => i.status !== 'cobrado' && i.status !== 'listo').length
+      const listas = list.filter(i => i.status === 'listo' || i.status === 'cobrado').length
+      return {
+        key,
+        branch,
+        list,
+        name: branch?.name || 'Sin sucursal',
+        subtitle: branch
+          ? [branch.manager, branch.address].filter(Boolean).join(' · ') || 'Sin datos de la sucursal'
+          : 'Prendas sin asignar a ninguna sucursal',
+        stats: [
+          { label: 'prendas', value: list.length },
+          { label: 'total', value: settings.format(total), tone: 'text-emerald-600' },
+          { label: 'en proceso', value: enProceso, tone: 'text-sky-600' },
+          { label: 'listas', value: listas, tone: 'text-indigo-600' }
+        ]
+      }
+    })
+    .sort((a, b) => b.list.length - a.list.length)
 })
 
 /* ===== Acciones ===== */
@@ -109,6 +155,7 @@ function clearFilters() {
   filterCategory.value = 'all'
   filterStatus.value = 'all'
   filterView.value = 'activos'
+  filterBranch.value = 'all'
 }
 
 /* ===== Cancelar / archivar ===== */
@@ -171,12 +218,16 @@ function handleUnarchive(item) {
           <option value="archivados">Archivados</option>
           <option value="todos">Todos</option>
         </select>
+        <select v-model="filterBranch" class="input w-auto min-w-[150px]">
+          <option value="all">Todas las sucursales</option>
+          <option v-for="b in branches.list" :key="b.id" :value="b.id">{{ b.name }}</option>
+        </select>
         <select v-model="sortBy" class="input w-auto min-w-[130px]">
           <option value="recent">Recientes</option>
           <option value="name">Nombre</option>
           <option value="price">Precio</option>
         </select>
-        <button @click="openCreate" class="btn-primary shrink-0">
+        <button v-if="canCreate" @click="openCreate" class="btn-primary shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Nueva
         </button>
@@ -188,27 +239,39 @@ function handleUnarchive(item) {
       <p class="text-slate-500">
         <span class="font-medium text-slate-800">{{ filtered.length }}</span> de {{ items.stats.total }} prendas
       </p>
-      <button v-if="search || filterCategory !== 'all' || filterStatus !== 'all' || filterView !== 'activos'" @click="clearFilters" class="text-indigo-600 hover:text-indigo-700 font-medium">
+      <button v-if="search || filterCategory !== 'all' || filterStatus !== 'all' || filterView !== 'activos' || filterBranch !== 'all'" @click="clearFilters" class="text-indigo-600 hover:text-indigo-700 font-medium">
         Limpiar filtros
       </button>
     </div>
 
-    <!-- Grid -->
-    <div v-if="filtered.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      <ItemCard
-        v-for="item in filtered"
-        :key="item.id"
-        :item="item"
-        @view="openView"
-        @edit="openEdit"
-        @view-receipt="openReceipt"
-        @delete="handleDelete"
-        @advance="handleAdvance"
-        @cancel="handleCancel"
-        @reactivate="handleReactivate"
-        @archive="handleArchive"
-        @unarchive="handleUnarchive"
-      />
+    <!-- Tarjetas por sucursal -->
+    <div v-if="filtered.length" class="space-y-5">
+      <BranchGroupCard
+        v-for="g in groups"
+        :key="g.key"
+        :branch="g.branch"
+        :name="g.name"
+        :subtitle="g.subtitle"
+        :stats="g.stats"
+        icon="🧺"
+      >
+        <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <ItemCard
+            v-for="item in g.list"
+            :key="item.id"
+            :item="item"
+            @view="openView"
+            @edit="openEdit"
+            @view-receipt="openReceipt"
+            @delete="handleDelete"
+            @advance="handleAdvance"
+            @cancel="handleCancel"
+            @reactivate="handleReactivate"
+            @archive="handleArchive"
+            @unarchive="handleUnarchive"
+          />
+        </div>
+      </BranchGroupCard>
     </div>
 
     <!-- Vacío -->
@@ -218,8 +281,8 @@ function handleUnarchive(item) {
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ items.stats.total ? 'Prueba con otros filtros de búsqueda.' : 'Registra trajes, camas y ropa para comenzar a gestionar.' }}
       </p>
-      <button v-if="!items.stats.total" @click="openCreate" class="btn-primary">Crear primera prenda</button>
-      <button v-else @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
+      <button v-if="!items.stats.total && canCreate" @click="openCreate" class="btn-primary">Crear primera prenda</button>
+      <button v-else-if="items.stats.total" @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
     </div>
 
     <!-- Modales -->

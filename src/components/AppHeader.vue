@@ -14,6 +14,10 @@ const titles = {
   materials: { title: 'Materiales', sub: 'Inventario de productos de limpieza' },
   machines: { title: 'Máquinas', sub: 'Equipos y mantenimiento' },
   clients: { title: 'Clientes', sub: 'Directorio de clientes' },
+  branches: { title: 'Sucursales', sub: 'Puntos de atención y responsable' },
+  employees: { title: 'Empleados', sub: 'Gestión del personal del negocio' },
+  reports: { title: 'Reportes', sub: 'Ingresos, sucursales y rendimiento' },
+  earnings: { title: 'Ganancias', sub: 'Detalle de ingresos cobrados' },
   settings: { title: 'Ajustes', sub: 'Preferencias del sistema' }
 }
 

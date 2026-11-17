@@ -69,7 +69,7 @@ const supplierOptions = computed(() => {
 
 function pickSupplier(value) {
   form.value.showNewSupplier = value === '__new__'
-  if (form.value.showNewSupplier) form.value.supplier = ''
+  form.value.supplier = form.value.showNewSupplier ? '' : (value || '')
 }
 
 /** Quita el proveedor seleccionado de la lista de proveedores registrados */

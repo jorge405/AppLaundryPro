@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useItemsStore } from '@/stores/Items.js'
@@ -6,12 +7,14 @@ import { useMaterialsStore } from '@/stores/materials.js'
 import { useMachinesStore } from '@/stores/machines.js'
 import { useClientsStore } from '@/stores/clients.js'
 import { useBranchesStore } from '@/stores/branches.js'
+import { useEmployeesStore } from '@/stores/employees.js'
 
 
 const materials = useMaterialsStore()
 const machines = useMachinesStore()
 const clients = useClientsStore()
 const branches = useBranchesStore()
+const employees = useEmployeesStore()
 
 defineProps({ open: Boolean })
 defineEmits(['close'])
@@ -21,13 +24,57 @@ const router = useRouter()
 const auth = useAuthStore()
 const items = useItemsStore()
 
-const nav = [
-  { name: 'dashboard', label: 'Panel', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { name: 'items', label: 'Prendas', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-  { name: 'settings', label: 'Ajustes', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-  { name: 'settings', label: 'Ajustes', icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
-  { name: 'earnings', label: 'Ganancias', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
-]
+/** Enlaces del menú con el permiso requerido para verse */
+const links = computed(() => {
+  const panel = auth.isAdmin
+    ? { name: 'admin-panel', label: 'Panel', perm: 'reports.view' }
+    : { name: 'dashboard', label: 'Panel', perm: 'items.view' }
+
+  return [
+    panel,
+    {
+      name: 'reports', label: 'Reportes', perm: 'reports.view',
+      icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+    },
+  {
+    name: 'items', label: 'Prendas', perm: 'items.view',
+    icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    badge: items.stats.total
+  },
+  {
+    name: 'materials', label: 'Materiales', perm: 'materials.view',
+    icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a6 6 0 00-1.806.547M8 4h8l-1 1v5.172a6 6 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A6 6 0 009 10.172V5L8 4z',
+    badge: materials.stats.total, badgeColor: 'rose'
+  },
+  {
+    name: 'machines', label: 'Máquinas', perm: 'machines.view',
+    icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z',
+    badge: machines.stats.total
+  },
+  {
+    name: 'branches', label: 'Sucursales', perm: 'branches.view',
+    icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z',
+    badge: branches.stats.total
+  },
+  {
+    name: 'employees', label: 'Empleados', perm: 'employees.view',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+    badge: employees.stats.total
+  },
+  {
+    name: 'clients', label: 'Clientes', perm: 'clients.view',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zM6 3a2 2 0 11-4 0 2 2 0 014 0z',
+    badge: clients.stats.total
+  },
+  {
+    name: 'earnings', label: 'Ganancias', perm: 'earnings.view',
+    icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+  }
+  ]
+})
+
+/** Enlaces visibles según los permisos del rol */
+const visibleLinks = computed(() => links.value.filter(l => auth.can(l.perm)))
 
 function logout() {
   auth.logout()
@@ -50,7 +97,7 @@ function logout() {
     <div class="h-16 flex items-center gap-3 px-5 border-b border-slate-200/80">
       <div class="w-9 h-9 rounded-xl bg-linear-to-tr from-indigo-600 to-violet-500 grid place-items-center text-white shadow-lg shadow-indigo-500/30">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a6 6 0 00-1.806.547M8 4h8l-1 1v5.172a6 6 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A6 6 0 009 10.172V5L8 4z"/>
         </svg>
       </div>
       <div>
@@ -60,48 +107,42 @@ function logout() {
     </div>
 
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-  <RouterLink
-    v-for="link in [
-      { name: 'dashboard', label: 'Panel', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-      { name: 'items', label: 'Prendas', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', badge: items.stats.total },
-      { name: 'materials', label: 'Materiales', icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z', badge: materials.stats.total, badgeColor: 'rose' },
-      { name: 'machines', label: 'Máquinas', icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z', badge: machines.stats.total },
-      { name: 'branches', label: 'Sucursales', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z', badge: branches.stats.total },
-      { name: 'clients', label: 'Clientes', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', badge: clients.stats.total }
-    ]"
-    :key="link.name"
-    :to="{ name: link.name }"
-    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
-    :class="route.name === link.name || (link.name === 'items' && route.name === 'item-detail')
-      ? 'bg-indigo-50 text-indigo-700 shadow-sm'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
-    @click="$emit('close')"
-  >
-    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
-    </svg>
-    <span>{{ link.label }}</span>
-    <span v-if="link.badge" :class="[
-      'ml-auto text-xs font-semibold px-2 py-0.5 rounded-full',
-      link.badgeColor === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
-    ]">
-      {{ link.badge }}
-    </span>
-  </RouterLink>
+      <RouterLink
+        v-for="link in visibleLinks"
+        :key="link.name"
+        :to="{ name: link.name }"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+        :class="route.name === link.name || (link.name === 'items' && route.name === 'item-detail')
+          ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
+        @click="$emit('close')"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
+        </svg>
+        <span>{{ link.label }}</span>
+        <span v-if="link.badge" :class="[
+          'ml-auto text-xs font-semibold px-2 py-0.5 rounded-full',
+          link.badgeColor === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
+        ]">
+          {{ link.badge }}
+        </span>
+      </RouterLink>
 
-  <RouterLink
-    :to="{ name: 'settings' }"
-    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
-    :class="route.name === 'settings' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
-    @click="$emit('close')"
-  >
-    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-    </svg>
-    <span>Ajustes</span>
-  </RouterLink>
-</nav>
+      <RouterLink
+        v-if="auth.can('settings.edit')"
+        :to="{ name: 'settings' }"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+        :class="route.name === 'settings' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
+        @click="$emit('close')"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span>Ajustes</span>
+      </RouterLink>
+    </nav>
 
     <div class="p-3 border-t border-slate-200/80">
       <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50">
@@ -110,7 +151,7 @@ function logout() {
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-slate-800 truncate">{{ auth.user?.name }}</p>
-          <p class="text-xs text-slate-500 truncate">{{ auth.user?.email }}</p>
+          <p class="text-xs text-slate-500 truncate">{{ auth.roleLabel }}</p>
         </div>
         <button @click="logout" title="Salir" class="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

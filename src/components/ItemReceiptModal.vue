@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useItemsStore, CATEGORIES } from '@/stores/items'
+import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'
 import { formatDate } from '@/utils/format'
@@ -12,8 +13,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'charged'])
 
 const itemsStore = useItemsStore()
+const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
+
+/** Solo quien puede operar el flujo puede cobrar el pedido */
+const canCharge = computed(() => auth.can('items.edit'))
 
 /** Pedido completo al que pertenece la prenda */
 const order = computed(() => itemsStore.getOrderByItem(props.item))
@@ -333,7 +338,7 @@ ${rowsHtml}
           <!-- Acciones -->
           <div class="p-4 border-t border-slate-100 space-y-2">
             <button
-              v-if="!isCharged"
+              v-if="!isCharged && canCharge"
               @click="handleCharge"
               class="w-full btn-primary"
             >

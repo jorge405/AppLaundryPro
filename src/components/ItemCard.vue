@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import QuickStatusSelect from './QuickStatusSelect.vue'
 import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items'
+import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'
 import { timeAgo } from '@/utils/format'
@@ -10,10 +11,17 @@ const props = defineProps({ item: Object })
 const emit = defineEmits(['delete', 'advance', 'view', 'edit', 'view-receipt', 'cancel', 'reactivate', 'archive', 'unarchive'])
 
 const items = useItemsStore()
+const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
 
 const cat = computed(() => CATEGORIES.find(c => c.id === props.item.category) || CATEGORIES.at(-1))
+
+// El administrador del negocio solo consulta: no edita el flujo de prendas
+const canEdit = computed(() => auth.can('items.edit'))
+const canManageFlow = computed(() => auth.can('items.cancel'))
+const canArchive = computed(() => auth.can('items.archive'))
+const canAdvance = computed(() => auth.can('items.edit'))
 
 // Pedido al que pertenece la prenda
 const order = computed(() => items.getOrderByItem(props.item))
@@ -54,12 +62,18 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
         Archivado
       </span>
       <QuickStatusSelect
-        v-else
+        v-else-if="canAdvance"
         :model-value="item.status"
         :options="statusOptions"
         :disabled="statusLocked"
         @update:model-value="value => { const res = items.updateItem(item.id, { status: value }); if (res?.blocked) toast.error('Estado bloqueado: prenda cobrada') }"
       />
+      <span
+        v-else
+        class="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 shrink-0"
+      >
+        {{ STATUSES.find(s => s.id === item.status)?.label || item.status }}
+      </span>
     </div>
 
     <!-- Cliente -->
@@ -123,6 +137,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
       </button>
 
       <button
+        v-if="canEdit"
         @click="emit('edit', item)"
         class="flex-1 btn-ghost text-xs justify-center border border-slate-200"
         title="Editar en el modal"
@@ -144,7 +159,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
       </button>
 
       <button
-        v-if="item.status !== 'cobrado' && !item.cancelled && !item.archived"
+        v-if="canAdvance && item.status !== 'cobrado' && !item.cancelled && !item.archived"
         @click="emit('advance', item.id)"
         class="btn-ghost text-xs p-2"
         title="Avanzar estado"
@@ -156,7 +171,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
 
       <!-- Permitir pasar de cobrado → entregado desde la tarjeta -->
       <button
-        v-if="item.status === 'cobrado' && !item.cancelled && !item.archived"
+        v-if="canAdvance && item.status === 'cobrado' && !item.cancelled && !item.archived"
         @click="emit('advance', item.id)"
         class="btn-ghost text-xs p-2 text-teal-600 hover:bg-teal-50"
         title="Marcar como entregado"
@@ -168,7 +183,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
 
       <!-- Cancelar / reactivar -->
       <button
-        v-if="!item.cancelled"
+        v-if="canManageFlow && !item.cancelled"
         @click="emit('cancel', item)"
         class="btn-ghost text-xs p-2 text-slate-500 hover:bg-slate-100"
         title="Cancelar prenda (no se borra)"
@@ -178,7 +193,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
         </svg>
       </button>
       <button
-        v-else
+        v-else-if="canManageFlow"
         @click="emit('reactivate', item)"
         class="btn-ghost text-xs p-2 text-emerald-600 hover:bg-emerald-50"
         title="Reactivar prenda"
@@ -190,7 +205,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
 
       <!-- Archivar / desarchivar -->
       <button
-        v-if="!item.archived"
+        v-if="canArchive && !item.archived"
         @click="emit('archive', item)"
         class="btn-ghost text-xs p-2 text-slate-500 hover:bg-slate-100"
         title="Archivar (sale de la lista)"
@@ -200,7 +215,7 @@ const statusOptions = STATUSES.map(s => ({ id: s.id, label: s.label, color: s.co
         </svg>
       </button>
       <button
-        v-else
+        v-else-if="canArchive"
         @click="emit('unarchive', item)"
         class="btn-ghost text-xs p-2 text-indigo-600 hover:bg-indigo-50"
         title="Desarchivar"

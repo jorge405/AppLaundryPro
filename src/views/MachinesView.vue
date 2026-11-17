@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useMachinesStore, MACHINE_TYPES, MACHINE_STATUSES } from '@/stores/machines.js'
+import { useAuthStore } from '@/stores/auth.js'
+import { useBranchesStore } from '@/stores/branches.js'
 import MachineFormModal from '@/components/MachineFormModal.vue'
 import MachineStatusModal from '@/components/MachineStatusModal.vue'
 import MachineMovements from '@/components/MachineMovements.vue'
+import BranchGroupCard from '@/components/BranchGroupCard.vue'
 import StatCard from '@/components/StatCard.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -13,12 +16,20 @@ import { useSettingsStore } from '@/stores/settings'
 const settings = useSettingsStore()
 
 const store = useMachinesStore()
+const auth = useAuthStore()
+const branches = useBranchesStore()
 const toast = useToast()
 const { confirm } = useConfirm()
+
+/** El administrador del negocio solo consulta máquinas y movimientos */
+const canCreate = computed(() => auth.can('machines.create'))
+const canEdit = computed(() => auth.can('machines.edit'))
+const canStatus = computed(() => auth.can('machines.status'))
 
 const search = ref('')
 const filterType = ref('all')
 const filterStatus = ref('all')
+const filterBranch = ref('all')
 const modalOpen = ref(false)
 const statusModalOpen = ref(false)
 const editing = ref(null)
@@ -38,6 +49,7 @@ const filtered = computed(() => {
   }
   if (filterType.value !== 'all') list = list.filter(m => m.type === filterType.value)
   if (filterStatus.value !== 'all') list = list.filter(m => m.status === filterStatus.value)
+  if (filterBranch.value !== 'all') list = list.filter(m => m.branchId === filterBranch.value)
   return list
 })
 
@@ -63,9 +75,10 @@ function clearFilters() {
   search.value = ''
   filterType.value = 'all'
   filterStatus.value = 'all'
+  filterBranch.value = 'all'
 }
 
-const typeIcon = (id) => MACHINE_TYPES.find(t => t.id === id)?.icon || '�a"️'
+const typeIcon = (id) => MACHINE_TYPES.find(t => t.id === id)?.icon || '🌀'
 const typeLabel = (id) => MACHINE_TYPES.find(t => t.id === id)?.label || id
 
 const statusStyles = {
@@ -76,14 +89,64 @@ const statusStyles = {
 }
 const statusOf = (id) => MACHINE_STATUSES.find(s => s.id === id)?.label || id
 
-const fmtDay = (iso) => (iso ? formatDate(iso) : '�')
+const fmtDay = (iso) => (iso ? formatDate(iso) : '—')
 /** Solo la fecha (sin hora) */
 const fmtDateOnly = (iso) => {
-  if (!iso) return '�'
+  if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
+
+/** Agrupa las máquinas por sucursal (incluye un grupo "Sin sucursal") */
+const groups = computed(() => {
+  const map = new Map()
+  for (const m of filtered.value) {
+    const key = m.branchId || '__none__'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key).push(m)
+  }
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const branch = key === '__none__' ? null : branches.getById(key)
+      const by = (s) => list.filter(m => m.status === s).length
+
+      // Fechas de mantenimiento del grupo
+      const nextDates = list.map(m => m.nextMaintenance).filter(Boolean).sort()
+      const sentDates = list.map(m => m.maintenance?.sentDate).filter(Boolean).sort()
+      const pickupDates = list.map(m => m.maintenance?.pickupDate).filter(Boolean).sort()
+      const faultDates = list.map(m => m.breakdown?.detectedDate).filter(Boolean).sort()
+
+      const cost = list.reduce(
+        (s, m) => s + (Number(m.maintenance?.cost) || 0) + (Number(m.breakdown?.cost) || 0),
+        0
+      )
+
+      return {
+        key,
+        branch,
+        list,
+        name: branch?.name || 'Sin sucursal',
+        subtitle: branch
+          ? [branch.manager, branch.address].filter(Boolean).join(' · ') || 'Sin datos de la sucursal'
+          : 'Máquinas sin asignar a ninguna sucursal',
+        stats: [
+          { label: 'máquinas', value: list.length },
+          { label: 'operativas', value: by('operativa'), tone: 'text-emerald-600' },
+          { label: 'mantenim.', value: by('mantenimiento'), tone: 'text-amber-600' },
+          { label: 'averiadas', value: by('averiada'), tone: 'text-rose-600' }
+        ],
+        dates: [
+          { label: 'Próximo mantenimiento', value: nextDates.length ? fmtDateOnly(nextDates[0]) : '—', tone: 'text-indigo-700' },
+          { label: 'Último envío a mantenimiento', value: sentDates.length ? fmtDateOnly(sentDates[sentDates.length - 1]) : '—' },
+          { label: 'Última recogida', value: pickupDates.length ? fmtDateOnly(pickupDates[pickupDates.length - 1]) : '—' },
+          { label: 'Última avería', value: faultDates.length ? fmtDateOnly(faultDates[faultDates.length - 1]) : '—', tone: faultDates.length ? 'text-rose-700' : '' },
+          { label: 'Costo de mantenimiento', value: settings.format(cost), tone: 'text-slate-700' }
+        ]
+      }
+    })
+    .sort((a, b) => b.list.length - a.list.length)
+})
 </script>
 
 <template>
@@ -144,14 +207,29 @@ const fmtDateOnly = (iso) => {
         <option value="all">Todos los estados</option>
         <option v-for="s in MACHINE_STATUSES" :key="s.id" :value="s.id">{{ s.label }}</option>
       </select>
-      <button @click="openCreate" class="btn-primary shrink-0">
+      <select v-model="filterBranch" class="input w-auto min-w-45">
+        <option value="all">Todas las sucursales</option>
+        <option v-for="b in branches.list" :key="b.id" :value="b.id">{{ b.name }}</option>
+      </select>
+      <button v-if="canCreate" @click="openCreate" class="btn-primary shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         Nueva máquina
       </button>
     </div>
 
-    <div v-if="filtered.length" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-  <div v-for="m in filtered" :key="m.id" class="card p-5 flex flex-col gap-3 hover:shadow-md transition">
+    <div v-if="filtered.length" class="space-y-5">
+      <BranchGroupCard
+        v-for="g in groups"
+        :key="g.key"
+        :branch="g.branch"
+        :name="g.name"
+        :subtitle="g.subtitle"
+        :stats="g.stats"
+        :dates="g.dates"
+        icon="🌀"
+      >
+        <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+  <div v-for="m in g.list" :key="m.id" class="card p-5 flex flex-col gap-3 hover:shadow-md transition">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <div class="w-11 h-11 rounded-xl bg-slate-100 grid place-items-center text-xl shrink-0">
@@ -198,10 +276,10 @@ const fmtDateOnly = (iso) => {
         <span class="text-amber-700">Se recoge:</span> {{ fmtDateOnly(m.maintenance.pickupDate) }}
       </p>
       <p class="text-amber-800">
-        <span class="text-amber-700">Lugar:</span> {{ m.maintenance.place || '�' }}
+        <span class="text-amber-700">Lugar:</span> {{ m.maintenance.place || '—' }}
       </p>
       <p class="text-amber-800">
-        <span class="text-amber-700">Proveedor:</span> {{ m.maintenance.supplier || '�' }}
+        <span class="text-amber-700">Proveedor:</span> {{ m.maintenance.supplier || '—' }}
       </p>
       <p class="text-amber-800">
         <span class="text-amber-700">Precio:</span> {{ settings.format(m.maintenance.cost || 0) }}
@@ -215,17 +293,17 @@ const fmtDateOnly = (iso) => {
     >
       <p class="font-semibold text-rose-900">Averiada</p>
       <p class="text-rose-800">
-        <span class="text-rose-700">Fallo:</span> {{ m.breakdown.fault || '�' }}
+        <span class="text-rose-700">Fallo:</span> {{ m.breakdown.fault || '—' }}
       </p>
       <p class="text-rose-800">
         <span class="text-rose-700">Detectado:</span> {{ fmtDateOnly(m.breakdown.detectedDate) }}
         <span v-if="m.breakdown.reportedBy"> · {{ m.breakdown.reportedBy }}</span>
       </p>
       <p class="text-rose-800">
-        <span class="text-rose-700">Lugar:</span> {{ m.breakdown.place || '�' }}
+        <span class="text-rose-700">Lugar:</span> {{ m.breakdown.place || '—' }}
       </p>
       <p class="text-rose-800">
-        <span class="text-rose-700">Proveedor:</span> {{ m.breakdown.supplier || '�' }}
+        <span class="text-rose-700">Proveedor:</span> {{ m.breakdown.supplier || '—' }}
       </p>
       <p class="text-rose-800">
         <span class="text-rose-700">Costo estimado:</span> {{ settings.format(m.breakdown.cost || 0) }}
@@ -244,27 +322,29 @@ const fmtDateOnly = (iso) => {
     </div>
 
     <div class="flex items-center gap-2 pt-3 border-t border-slate-100 mt-auto">
-      <button @click="openStatus(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-indigo-200 text-indigo-600">
+      <button v-if="canStatus" @click="openStatus(m)" class="btn-ghost text-xs px-2.5 py-1.5 border border-indigo-200 text-indigo-600">
         Cambiar estado
       </button>
-      <button @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
+      <button v-if="canEdit" @click="openEdit(m)" class="btn-ghost text-xs p-2 ml-auto" title="Editar todo">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
       </button>
-      <button @click="handleDelete(m.id)" class="btn-ghost text-xs text-rose-500 hover:bg-rose-50 p-2">
+      <button v-if="canEdit" @click="handleDelete(m.id)" class="btn-ghost text-xs text-rose-500 hover:bg-rose-50 p-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/></svg>
       </button>
     </div>
   </div>
-</div>
+        </div>
+      </BranchGroupCard>
+    </div>
 
     <div v-else class="card p-12 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">�a"️</div>
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-linear-to-tr from-indigo-100 to-violet-100 grid place-items-center text-2xl mb-4">🌀</div>
       <h3 class="font-semibold text-slate-900">{{ store.stats.total ? 'Sin resultados' : 'Sin máquinas registradas' }}</h3>
       <p class="text-sm text-slate-500 mt-1 mb-5">
         {{ store.stats.total ? 'Prueba con otros filtros.' : 'Registra lavadoras, secadoras, planchas...' }}
       </p>
-      <button v-if="!store.stats.total" @click="openCreate" class="btn-primary">Crear primera máquina</button>
-      <button v-else @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
+      <button v-if="!store.stats.total && canCreate" @click="openCreate" class="btn-primary">Crear primera máquina</button>
+      <button v-else-if="store.stats.total" @click="clearFilters" class="btn-ghost">Limpiar filtros</button>
     </div>
 
     </template>

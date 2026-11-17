@@ -1,12 +1,14 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { MACHINE_TYPES, MACHINE_STATUSES, useMachinesStore } from '@/stores/machines.js'
+import { useBranchesStore } from '@/stores/branches.js'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({ modelValue: Boolean, item: Object })
 const emit = defineEmits(['update:modelValue', 'saved'])
 
 const store = useMachinesStore()
+const branches = useBranchesStore()
 const toast = useToast()
 
 const emptyForm = () => ({
@@ -17,6 +19,7 @@ const emptyForm = () => ({
   serial: '',
   status: 'operativa',
   location: '',
+  branchId: '',
   purchaseDate: '',
   nextMaintenance: '',
   notes: ''
@@ -49,6 +52,7 @@ function submit() {
     serial: form.value.serial?.trim() || '',
     status: form.value.status,
     location: form.value.location?.trim() || '',
+    branchId: form.value.branchId || '',
     purchaseDate: form.value.purchaseDate,
     nextMaintenance: form.value.nextMaintenance,
     notes: form.value.notes?.trim() || ''
@@ -127,6 +131,14 @@ function close() { emit('update:modelValue', false) }
                 <label class="label">Ubicación</label>
                 <input v-model="form.location" class="input" placeholder="Ej: Sala principal" />
               </div>
+            </div>
+
+            <div>
+              <label class="label">Sucursal</label>
+              <select v-model="form.branchId" class="input">
+                <option value="">Sin sucursal</option>
+                <option v-for="b in branches.list" :key="b.id" :value="b.id">{{ b.name }}</option>
+              </select>
             </div>
 
             <div class="grid grid-cols-2 gap-4">

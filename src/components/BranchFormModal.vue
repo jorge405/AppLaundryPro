@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useBranchesStore } from '@/stores/branches.js'
-import { useSuperAdminStore } from '@/stores/superadmin.js'
+import { useEmployeesStore } from '@/stores/employees.js'
 import { useAuthStore } from '@/stores/auth.js'
 import { useToast } from '@/composables/useToast'
 
@@ -9,7 +9,7 @@ const props = defineProps({ modelValue: Boolean, branch: Object })
 const emit = defineEmits(['update:modelValue', 'saved'])
 
 const branches = useBranchesStore()
-const sa = useSuperAdminStore()
+const employees = useEmployeesStore()
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -36,11 +36,17 @@ watch(() => props.modelValue, (open) => {
   form.value = props.branch ? { ...emptyForm(), ...props.branch } : emptyForm()
 })
 
-const companies = computed(() => sa.clients)
+/** Personal disponible para ser responsable de la sucursal */
+const staffOptions = computed(() => employees.list)
 
-function onCompanyChange(id) {
-  const c = companies.value.find(x => x.id === id)
-  form.value.companyName = c?.name || ''
+function onManagerChange(value) {
+  const emp = employees.getById(value)
+  if (emp) {
+    form.value.manager = emp.name
+    if (!form.value.branchId && emp.branchId) form.value.branchId = emp.branchId
+  } else {
+    form.value.manager = value
+  }
 }
 
 function validate() {
@@ -102,21 +108,6 @@ function close() { emit('update:modelValue', false) }
             </div>
 
             <div>
-              <label class="label">Empresa</label>
-              <select
-                :value="form.companyId || ''"
-                class="input"
-                @change="onCompanyChange($event.target.value); form.companyId = $event.target.value"
-              >
-                <option value="">Sin empresa asignada</option>
-                <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-              <p class="mt-1 text-xs text-slate-400">
-                La sucursal queda vinculada a la empresa para el superadmin de empresas.
-              </p>
-            </div>
-
-            <div>
               <label class="label">Dirección *</label>
               <input v-model="form.address" class="input" placeholder="Ej: Av. Ballivián 1420, La Paz" />
               <p v-if="errors.address" class="mt-1 text-xs text-rose-500">{{ errors.address }}</p>
@@ -139,8 +130,14 @@ function close() { emit('update:modelValue', false) }
 
             <div>
               <label class="label">Responsable a cargo *</label>
-              <input v-model="form.manager" class="input" placeholder="Ej: María Ramírez" />
+              <select :value="form.manager" class="input" @change="onManagerChange($event.target.value)">
+                <option value="">Selecciona un empleado...</option>
+                <option v-for="e in staffOptions" :key="e.id" :value="e.name">{{ e.name }} — {{ e.position || e.email }}</option>
+              </select>
               <p v-if="errors.manager" class="mt-1 text-xs text-rose-500">{{ errors.manager }}</p>
+              <p class="mt-1 text-xs text-slate-400">
+                El responsable se elige de la lista de empleados.
+              </p>
             </div>
 
             <div>
