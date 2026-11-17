@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useItemsStore } from '@/stores/items'
+import { useItemsStore } from '@/stores/Items'
 import { useSettingsStore } from '@/stores/settings'
 import StatCard from '@/components/StatCard.vue'
 
