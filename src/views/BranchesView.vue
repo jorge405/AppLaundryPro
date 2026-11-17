@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useBranchesStore } from '@/stores/branches.js'
-import { useItemsStore } from '@/stores/items.js'
+import { useItemsStore } from '@/stores/Items.js' 
 import { useMaterialsStore } from '@/stores/materials.js'
 import { useSuperAdminStore } from '@/stores/superadmin.js'
 import { useAuthStore } from '@/stores/auth.js'

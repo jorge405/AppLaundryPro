@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useItemsStore } from '@/stores/Items.js'
 import { useMaterialsStore } from '@/stores/materials.js'
-import { useMachinesStore } from '@/stores/machines.js'
+import { useMachinesStore } from '@/stores/machines.js' 
 import { useClientsStore } from '@/stores/clients.js'
 import { useAuthStore } from '@/stores/auth.js'
 import { useSettingsStore } from '@/stores/settings.js'
