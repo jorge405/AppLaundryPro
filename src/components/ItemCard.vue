@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import QuickStatusSelect from './QuickStatusSelect.vue'
-import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items'
+import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/Items' 
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'

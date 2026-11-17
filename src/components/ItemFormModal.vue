@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/items'
+import { CATEGORIES, STATUSES, useItemsStore } from '@/stores/Items'
 import { useBranchesStore } from '@/stores/branches.js'
 import { useToast } from '@/composables/useToast'
 import { useSettingsStore } from '@/stores/settings'

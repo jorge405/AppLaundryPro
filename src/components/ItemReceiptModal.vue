@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useItemsStore, CATEGORIES } from '@/stores/items'
+import { useItemsStore, CATEGORIES } from '@/stores/Items'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'
